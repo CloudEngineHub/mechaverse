@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Select,
   SelectContent,
@@ -83,14 +83,21 @@ const examples: Record<FileType, Example[]> = {
 interface RobotSelectorProps {
   onUploadClick: () => void;
   onExampleLoad?: (example: Example) => void;
+  onFileTypeChange?: (fileType: FileType) => void;
 }
 
 export default function RobotSelector({
   onUploadClick,
   onExampleLoad,
+  onFileTypeChange,
 }: RobotSelectorProps) {
   const [selectedFileType, setSelectedFileType] = useState<FileType>("URDF");
   const { selectedRobot, loadExampleRobot } = useRobot();
+
+  // Notify parent when file type changes
+  useEffect(() => {
+    onFileTypeChange?.(selectedFileType);
+  }, [selectedFileType, onFileTypeChange]);
 
   const handleExampleClick = (example: Example) => {
     if (example.fileType === "URDF" && example.path) {

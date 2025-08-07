@@ -4,11 +4,14 @@ import RobotViewer from "@/components/viewer/RobotViewer";
 import RobotSelector from "@/components/RobotSelector";
 import FullScreenDragDrop from "@/components/FullScreenDragDrop";
 import { RobotProvider } from "@/contexts/RobotContext";
+import MuJoCoViewer from "@/components/viewer/MuJoCoViewer";
 import Link from "next/link";
 import { useState } from "react";
+import { FileType } from "@/components/RobotSelector";
 
 export default function Home() {
   const [showFullScreenDragDrop, setShowFullScreenDragDrop] = useState(false);
+  const [selectedFileType, setSelectedFileType] = useState<FileType>("URDF");
 
   return (
     <div className="w-full h-screen flex flex-col">
@@ -93,20 +96,25 @@ export default function Home() {
                 <div className="w-full h-full">
                   <RobotSelector
                     onUploadClick={() => setShowFullScreenDragDrop(true)}
+                    onFileTypeChange={setSelectedFileType}
                   />
                 </div>
               </div>
             </div>
-            {/* RobotViewer section */}
+            {/* Viewer section */}
             <div
               className="flex-[3] min-w-0 h-full flex items-center justify-center"
               style={{ minWidth: "60%" }}
             >
-              {/* Card container for robot viewer */}
+              {/* Card container for viewer */}
               <div className="w-full h-full bg-[#fef4da] rounded-xl shadow-lg border-3 border-black overflow-hidden">
                 {/* Card content */}
                 <div className="w-full h-full">
-                  <RobotViewer />
+                  {selectedFileType === "MJCF" ? (
+                    <MuJoCoViewer />
+                  ) : (
+                    <RobotViewer />
+                  )}
                 </div>
               </div>
             </div>

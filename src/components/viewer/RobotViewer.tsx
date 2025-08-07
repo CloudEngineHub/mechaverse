@@ -10,6 +10,7 @@ import {
   setupModelLoading,
   URDFViewerElement,
 } from "@/components/viewer/urdfViewerHelpers";
+import * as THREE from "three";
 
 // Dynamic import for URDFManipulator to avoid SSR issues
 let URDFManipulator: typeof HTMLElement | null = null;
@@ -35,6 +36,7 @@ const UrdfViewer: React.FC = () => {
     onRobotDetected,
     robotBlobUrls,
     alternativeRobotModels,
+    selectedRobot,
   } = useRobot();
 
   const viewerRef = useRef<URDFViewerElement | null>(null);
@@ -50,6 +52,13 @@ const UrdfViewer: React.FC = () => {
 
   // State to track if we have a dropped robot
   const [hasDroppedRobot, setHasDroppedRobot] = useState(false);
+
+  // Mapping from robot names to their URDF paths
+  const robotPathMap: Record<string, string> = {
+    Cassie: "/urdf/cassie/cassie.urdf",
+    "SO-100": "/urdf/so-100/so_100.urdf",
+    "Anymal B": "/urdf/anymal-b/anymal.urdf",
+  };
 
   // Implement UrdfProcessor interface for drag and drop
   const urdfProcessor = useMemo(
@@ -79,7 +88,10 @@ const UrdfViewer: React.FC = () => {
       console.log("🤖 Robot detection callback triggered:", result);
       if (result.hasRobot && result.modelName) {
         console.log("🤖 Robot detected:", result.modelName);
-        setHasDroppedRobot(true);
+        // Only set hasDroppedRobot to true if it's not a selected example robot
+        if (!selectedRobot || result.modelName !== selectedRobot) {
+          setHasDroppedRobot(true);
+        }
       } else {
         console.log("❌ No robot detected");
         setHasDroppedRobot(false);
@@ -87,7 +99,7 @@ const UrdfViewer: React.FC = () => {
     });
 
     return unsubscribe;
-  }, [onRobotDetected]);
+  }, [onRobotDetected, selectedRobot]);
 
   // Main effect to create and setup the viewer only once
   useEffect(() => {
@@ -98,14 +110,18 @@ const UrdfViewer: React.FC = () => {
     // Register the URDF manipulator first, then setup the viewer
     registerURDFManipulator().then(() => {
       // Create and configure the URDF viewer element
-      const viewer = createUrdfViewer(containerRef.current!, true);
+      const viewer = createUrdfViewer(containerRef.current!);
       viewerRef.current = viewer; // Store reference to the viewer
 
       // Setup mesh loading function
       setupMeshLoader(viewer, urlModifierFunc);
 
-      // Always start with the default T12 robot
-      const urdfPath = "/urdf/T12/urdf/T12.URDF";
+      // Use selected robot or default to SO-100
+      const defaultUrdfPath = "/urdf/so-100/so_100.urdf";
+      const urdfPath =
+        selectedRobot && robotPathMap[selectedRobot]
+          ? robotPathMap[selectedRobot]
+          : defaultUrdfPath;
 
       // Setup model loading if a path is available
       if (urdfPath) {
@@ -129,6 +145,9 @@ const UrdfViewer: React.FC = () => {
       // Setup animation event handler for the default model or when hasAnimation is true
       const onModelProcessed = () => {
         hasInitializedRef.current = true;
+
+        // Fit robot to view after it's loaded
+        fitRobotToView(viewer);
       };
 
       viewer.addEventListener("urdf-processed", onModelProcessed);
@@ -142,7 +161,106 @@ const UrdfViewer: React.FC = () => {
       hasInitializedRef.current = false;
       cleanupFunctions.forEach((cleanup) => cleanup());
     };
-  }, [urlModifierFunc, alternativeRobotModels]); // Removed hasDroppedRobot and customUrdfPath from dependencies
+  }, [urlModifierFunc, alternativeRobotModels, selectedRobot]); // Added selectedRobot to dependencies
+
+  // Function to fit the robot to the camera view
+  const fitRobotToView = (viewer: URDFViewerElement) => {
+    if (!viewer || !viewer.robot) {
+      return;
+    }
+
+    try {
+      // Create a bounding box for the robot
+      const boundingBox = new THREE.Box3().setFromObject(viewer.robot);
+
+      // Calculate the center of the bounding box
+      const center = new THREE.Vector3();
+      boundingBox.getCenter(center);
+
+      // Calculate the size of the bounding box
+      const size = new THREE.Vector3();
+      boundingBox.getSize(size);
+
+      // Get the maximum dimension to ensure the entire robot is visible
+      const maxDim = Math.max(size.x, size.y, size.z);
+
+      // Position camera to see the center of the model
+      viewer.camera.position.copy(center);
+
+      // Move the camera back to see the entire robot
+      // Use the model's up direction to determine which axis to move along
+      const upVector = new THREE.Vector3();
+      if (viewer.up === "+Z" || viewer.up === "Z") {
+        upVector.set(1, 1, 1); // Move back in a diagonal
+      } else if (viewer.up === "+Y" || viewer.up === "Y") {
+        upVector.set(1, 1, 1); // Move back in a diagonal
+      } else {
+        upVector.set(1, 1, 1); // Default direction
+      }
+
+      // Normalize the vector and multiply by the size
+      upVector.normalize().multiplyScalar(maxDim * 1.3);
+      viewer.camera.position.add(upVector);
+
+      // Make the camera look at the center of the model
+      viewer.controls.target.copy(center);
+
+      // Update controls and mark for redraw
+      viewer.controls.update();
+      viewer.redraw();
+    } catch (error) {
+      console.error("[RobotViewer] Error fitting robot to view:", error);
+    }
+  };
+
+  // Effect to handle robot selection changes
+  useEffect(() => {
+    if (!viewerRef.current || !selectedRobot || !robotPathMap[selectedRobot])
+      return;
+
+    console.log("🔄 Loading selected robot:", selectedRobot);
+
+    const urdfPath = robotPathMap[selectedRobot];
+
+    // Clear the current robot by removing the urdf attribute first
+    viewerRef.current.removeAttribute("urdf");
+
+    // Small delay to ensure the attribute is cleared
+    setTimeout(() => {
+      if (viewerRef.current) {
+        // Update the mesh loader first to ensure it's ready for the new URDF
+        console.log("🔄 Updating mesh loader before loading URDF");
+        setupMeshLoader(viewerRef.current, urlModifierFunc);
+
+        // Add a one-time event listener to confirm the URDF is processed
+        const onUrdfProcessed = () => {
+          console.log("✅ URDF processed successfully:", urdfPath);
+
+          // Fit robot to view after it's loaded
+          if (viewerRef.current) {
+            fitRobotToView(viewerRef.current);
+          }
+
+          viewerRef.current?.removeEventListener(
+            "urdf-processed",
+            onUrdfProcessed
+          );
+        };
+
+        viewerRef.current.addEventListener("urdf-processed", onUrdfProcessed);
+
+        viewerRef.current.setAttribute("urdf", urdfPath);
+        viewerRef.current.setAttribute("package", packageRef.current);
+
+        // Force a redraw
+        if (viewerRef.current.redraw) {
+          viewerRef.current.redraw();
+        }
+
+        console.log("🔄 URDF attributes set, redraw called");
+      }
+    }, 100);
+  }, [selectedRobot, urlModifierFunc]);
 
   // Effect to update the viewer when a new robot is dropped
   useEffect(() => {
@@ -171,6 +289,12 @@ const UrdfViewer: React.FC = () => {
         // Add a one-time event listener to confirm the URDF is processed
         const onUrdfProcessed = () => {
           console.log("✅ URDF processed successfully:", loadPath);
+
+          // Fit robot to view after it's loaded
+          if (viewerRef.current) {
+            fitRobotToView(viewerRef.current);
+          }
+
           viewerRef.current?.removeEventListener(
             "urdf-processed",
             onUrdfProcessed
@@ -230,13 +354,6 @@ const UrdfViewer: React.FC = () => {
       {highlightedJoint && (
         <div className="absolute bottom-4 right-4 bg-black/70 text-white px-3 py-2 rounded-md text-sm font-mono z-10">
           Joint: {highlightedJoint}
-        </div>
-      )}
-
-      {/* Robot status indicator */}
-      {hasDroppedRobot && (
-        <div className="absolute top-4 left-4 bg-green-600/80 text-white px-3 py-2 rounded-md text-sm font-medium z-10">
-          🤖 Custom Robot Loaded
         </div>
       )}
     </div>

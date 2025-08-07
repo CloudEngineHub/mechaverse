@@ -8,12 +8,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useRobot } from "@/hooks/useRobot";
 
 export type FileType = "URDF" | "MJCF" | "SDF" | "USD";
 
 export interface Example {
   name: string;
   fileType: FileType;
+  path?: string; // URDF file path for examples
 }
 
 const examples: Record<FileType, Example[]> = {
@@ -21,14 +23,17 @@ const examples: Record<FileType, Example[]> = {
     {
       name: "Cassie",
       fileType: "URDF",
+      path: "/urdf/cassie/cassie.urdf",
     },
     {
       name: "SO-100",
       fileType: "URDF",
+      path: "/urdf/so-100/so_100.urdf",
     },
     {
       name: "Anymal B",
       fileType: "URDF",
+      path: "/urdf/anymal-b/anymal.urdf",
     },
   ],
   MJCF: [
@@ -85,8 +90,12 @@ export default function RobotSelector({
   onExampleLoad,
 }: RobotSelectorProps) {
   const [selectedFileType, setSelectedFileType] = useState<FileType>("URDF");
+  const { selectedRobot, loadExampleRobot } = useRobot();
 
   const handleExampleClick = (example: Example) => {
+    if (example.fileType === "URDF" && example.path) {
+      loadExampleRobot(example.name);
+    }
     onExampleLoad?.(example);
   };
 
@@ -130,17 +139,28 @@ export default function RobotSelector({
       </div>
       {/* Example Cards */}
       <div className="grid grid-cols-3 gap-4 mb-4 w-full">
-        {examples[selectedFileType].map((example, index) => (
-          <button
-            key={index}
-            onClick={() => handleExampleClick(example)}
-            className="bg-[#f60001] rounded-lg px-3 py-1 text-left hover:bg-[#f60001]/80 hover:shadow-md hover:-translate-y-1 transition-all group h-10 flex items-center justify-center"
-          >
-            <h3 className="font-bold text-black font-helvetica-now-display">
-              {example.name}
-            </h3>
-          </button>
-        ))}
+        {examples[selectedFileType].map((example, index) => {
+          const isSelected = selectedRobot === example.name;
+          return (
+            <button
+              key={index}
+              onClick={() => handleExampleClick(example)}
+              className={`rounded-lg px-3 py-1 text-left transition-all group h-10 flex items-center justify-center ${
+                isSelected
+                  ? "bg-[#ffb601] shadow-lg scale-105 border-2 border-black"
+                  : "bg-[#f60001] hover:bg-[#f60001]/80 hover:shadow-md hover:-translate-y-1"
+              }`}
+            >
+              <h3
+                className={`font-bold font-helvetica-now-display ${
+                  isSelected ? "text-black" : "text-black"
+                }`}
+              >
+                {example.name}
+              </h3>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

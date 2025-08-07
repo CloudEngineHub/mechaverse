@@ -57,6 +57,11 @@ export type RobotContextType = {
     url?: string | null
   ) => void;
   clearGitHubState: () => void;
+
+  // Robot selection management
+  selectedRobot: string | null;
+  setSelectedRobot: (robot: string | null) => void;
+  loadExampleRobot: (robotName: string) => void;
 };
 
 // Create the context
@@ -105,6 +110,9 @@ export const RobotProvider: React.FC<{ children: ReactNode }> = ({
   const [isLoadingGitHub, setIsLoadingGitHub] = useState(false);
   const [githubError, setGithubError] = useState<string | null>(null);
   const [loadedGitHubUrl, setLoadedGitHubUrl] = useState<string | null>(null);
+
+  // Robot selection management
+  const [selectedRobot, setSelectedRobot] = useState<string | null>("SO-100");
 
   // Function to manage GitHub loading state
   const setGitHubLoadingState = useCallback(
@@ -263,9 +271,36 @@ export const RobotProvider: React.FC<{ children: ReactNode }> = ({
     [urdfProcessor, notifyRobotCallbacks, processSelectedRobot]
   );
 
+  // Function to load example robots
+  const loadExampleRobot = useCallback(
+    (robotName: string) => {
+      setSelectedRobot(robotName);
+
+      // Clear any uploaded robot state
+      setModelFiles(null);
+      setRobotContent(null);
+      setVisibleComponents(null);
+
+      // Clear blob URLs
+      Object.values(robotBlobUrls).forEach(URL.revokeObjectURL);
+      setRobotBlobUrls({});
+      setAlternativeRobotModels([]);
+
+      // Notify that a robot is selected (but not uploaded)
+      notifyRobotCallbacks({
+        hasRobot: true,
+        modelName: robotName,
+      });
+    },
+    [robotBlobUrls, notifyRobotCallbacks]
+  );
+
   // Process URDF files - moved from DragAndDropContext
   const processRobotFiles = useCallback(
     async (files: Record<string, File>, availableModels: string[]) => {
+      // Clear selected robot when uploading custom robot
+      setSelectedRobot(null);
+
       // Clear previous blob URLs to prevent memory leaks
       Object.values(robotBlobUrls).forEach(URL.revokeObjectURL);
       setRobotBlobUrls({});
@@ -489,6 +524,9 @@ export const RobotProvider: React.FC<{ children: ReactNode }> = ({
     loadedGitHubUrl,
     setGitHubLoadingState,
     clearGitHubState,
+    selectedRobot,
+    setSelectedRobot,
+    loadExampleRobot,
   };
 
   return (

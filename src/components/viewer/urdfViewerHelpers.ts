@@ -33,26 +33,20 @@ export interface URDFViewerElement extends HTMLElement {
 /**
  * Creates and configures a URDF viewer element
  */
-export function createUrdfViewer(
-  container: HTMLDivElement,
-  isDarkMode: boolean
-): URDFViewerElement {
+export function createUrdfViewer(container: HTMLDivElement): URDFViewerElement {
   // Clear any existing content
   container.innerHTML = "";
 
   // Create the urdf-viewer element
   const viewer = document.createElement("urdf-viewer") as URDFViewerElement;
   viewer.classList.add("w-full", "h-full");
-
-  // Add the element to the container
   container.appendChild(viewer);
 
   // Set initial viewer properties
   viewer.setAttribute("up", "Z");
-  setViewerColor(viewer, isDarkMode ? "#2c2b3a" : "#eff4ff");
-  viewer.setAttribute("highlight-color", isDarkMode ? "#df6dd4" : "#b05ffe");
+  setViewerColor(viewer, "#eff4ff");
+  viewer.setAttribute("highlight-color", "#ffb601");
   viewer.setAttribute("auto-redraw", "true");
-  // viewer.setAttribute("display-shadow", ""); // Enable shadows
 
   // Add ambient light to the scene
   const ambientLight = new AmbientLight(0xd6d6d6, 1); // Increased intensity to 0.4
@@ -176,31 +170,11 @@ export function setupModelLoading(
  * Sets the background color of the URDF viewer
  */
 function setViewerColor(viewer: URDFViewerElement, color: string): void {
-  // Set the ambient color for the scene
-  // viewer.setAttribute("ambient-color", color);
-
+  return;
   // Set the background color on the viewer's parent container
-  const container = viewer.parentElement;
-  if (container) {
-    container.style.backgroundColor = color;
-  }
-}
-
-/**
- * Updates the viewer's colors based on the current theme
- */
-export function updateViewerTheme(
-  viewer: URDFViewerElement,
-  isDarkMode: boolean
-): void {
-  // Update the ambient color
-  setViewerColor(viewer, isDarkMode ? "#2c2b3a" : "#eff4ff");
-  viewer.setAttribute("highlight-color", isDarkMode ? "#df6dd4" : "#b05ffe");
-
-  // // Update the ambient light intensity based on theme
-  // viewer.scene.traverse((object) => {
-  //   if (object instanceof AmbientLight) {
-  //     object.intensity = isDarkMode ? 0.4 : 0.6; // Brighter in light mode
-  //   }
-  // });
+  // TODO: Uncomment this if we want a way to set the background color of the viewer
+  // const container = viewer.parentElement;
+  // if (container) {
+  //   container.style.backgroundColor = color;
+  // }
 }

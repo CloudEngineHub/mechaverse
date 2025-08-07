@@ -17,7 +17,7 @@ export default function Home() {
         {/* Left side: Logo, GitHub and Discord icons/links */}
         <div className="flex items-center gap-6">
           <Link
-            href="/"
+            href="https://www.place-holder.dev/"
             className="hover:-translate-y-1 hover:opacity-80 transition-all flex items-center gap-2 group"
             aria-label="Home"
           >

@@ -10,6 +10,8 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-helvetica-now-display: "Helvetica Now Display Extra Bold", Helvetica, Arial, sans-serif;
+  --font-roboto: var(--font-roboto);
 }
 
 @media (prefers-color-scheme: dark) {

@@ -15,6 +15,7 @@ export type DragAndDropContextType = {
   isDragging: boolean;
   setIsDragging: (isDragging: boolean) => void;
   handleDrop: (e: DragEvent) => Promise<void>;
+  onFilesProcessed?: () => void;
 };
 
 export const DragAndDropContext = createContext<
@@ -23,10 +24,12 @@ export const DragAndDropContext = createContext<
 
 interface DragAndDropProviderProps {
   children: ReactNode;
+  onFilesProcessed?: () => void;
 }
 
 export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
   children,
+  onFilesProcessed,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -80,6 +83,9 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
 
         // Delegate further processing to UrdfContext
         await processRobotFiles(files, availableModels);
+
+        // Call the callback if provided
+        onFilesProcessed?.();
       } catch (error) {
         console.error("❌ Error in handleDrop:", error);
       }
@@ -115,16 +121,17 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
           isDragging,
           setIsDragging,
           handleDrop,
+          onFilesProcessed,
         }}
       >
         {children}
         {isDragging && (
-          <div className="absolute inset-0 bg-primary/10 pointer-events-none z-50 flex items-center justify-center">
-            <div className="bg-background p-8 rounded-lg shadow-lg text-center">
-              <div className="text-3xl font-bold mb-4">
-                Drop URDF Files Here
+          <div className="absolute inset-0 bg-blue-500/20 backdrop-blur-sm pointer-events-none z-50 flex items-center justify-center">
+            <div className="bg-white p-8 rounded-xl shadow-lg text-center border-2 border-blue-500">
+              <div className="text-3xl font-bold mb-4 text-blue-600">
+                Drop Robot Files Here
               </div>
-              <p className="text-muted-foreground">
+              <p className="text-gray-600">
                 Release to upload your robot model
               </p>
             </div>

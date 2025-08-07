@@ -221,7 +221,7 @@ const UrdfViewer: React.FC = () => {
   return (
     <div
       className={cn(
-        "w-full h-full transition-all duration-300 ease-in-out relative"
+        "w-full h-full transition-all duration-300 ease-in-out relative rounder-xl"
       )}
     >
       <div ref={containerRef} className="w-full h-full absolute inset-0" />

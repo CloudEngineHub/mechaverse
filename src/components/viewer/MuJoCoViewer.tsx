@@ -95,7 +95,7 @@ export default function MujocoViewer({
             border: "none",
             display: "block",
             background: "#fef4da",
-            borderRadius: 9,
+            borderRadius: "12px",
           }}
           title="MuJoCo Physics Viewer"
           loading="lazy"

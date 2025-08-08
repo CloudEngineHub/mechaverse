@@ -45,7 +45,7 @@ export function createUrdfViewer(container: HTMLDivElement): URDFViewerElement {
   // Set initial viewer properties
   viewer.setAttribute("up", "Z");
   setViewerColor(viewer, "#eff4ff");
-  viewer.setAttribute("highlight-color", "#ffb601");
+  viewer.setAttribute("highlight-color", "#FBE651");
   viewer.setAttribute("auto-redraw", "true");
 
   // Add ambient light to the scene

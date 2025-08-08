@@ -7,6 +7,8 @@ type MujocoViewerContextType = {
   loadPublicScene: (path: string) => void;
   loadXmlContent: (fileName: string, content: string) => void;
   resetPose: () => void;
+  setTransparentBackground: () => void;
+  fitIsometric: () => void;
   currentScenePath?: string | null;
 };
 
@@ -85,6 +87,14 @@ export const MujocoViewerProvider: React.FC<{ children: React.ReactNode }> = ({
     post({ type: "RESET_POSE" });
   }, [post]);
 
+  const setTransparentBackground = useCallback(() => {
+    post({ type: "SET_TRANSPARENT_BACKGROUND" });
+  }, [post]);
+
+  const fitIsometric = useCallback(() => {
+    post({ type: "FIT_ISO" });
+  }, [post]);
+
   return (
     <MujocoViewerContext.Provider
       value={{
@@ -92,6 +102,8 @@ export const MujocoViewerProvider: React.FC<{ children: React.ReactNode }> = ({
         loadPublicScene,
         loadXmlContent,
         resetPose,
+        setTransparentBackground,
+        fitIsometric,
         currentScenePath,
       }}
     >

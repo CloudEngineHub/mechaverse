@@ -44,6 +44,12 @@ export function createUrdfViewer(container: HTMLDivElement): URDFViewerElement {
 
   // Set initial viewer properties
   viewer.setAttribute("up", "Z");
+  // Hint transparent background for captures
+  try {
+    // Attribute supported by urdf-manipulator to set bg
+    (viewer as any).background = "transparent";
+    viewer.setAttribute("background", "transparent");
+  } catch {}
   setViewerColor(viewer, "#eff4ff");
   viewer.setAttribute("highlight-color", "#FBE651");
   viewer.setAttribute("auto-redraw", "true");

@@ -6,7 +6,10 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "capture": "tsx scripts/capture-screenshots.ts",
+    "bg:remove": "tsx scripts/remove-background.ts",
+    "bg:remove:fast": "tsx scripts/remove-background.ts --threshold=40 --feather=16"
   },
   "dependencies": {
     "@radix-ui/react-select": "^2.2.5",
@@ -22,16 +25,19 @@
     "urdf-loader": "^0.12.6"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/bun": "latest",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4",
     "eslint": "^9",
     "eslint-config-next": "15.4.5",
-    "@eslint/eslintrc": "^3",
-    "@types/bun": "latest"
+    "puppeteer": "^23.7.0",
+    "sharp": "^0.33.5",
+    "tailwindcss": "^4",
+    "tsx": "^4.19.2",
+    "typescript": "^5"
   },
   "module": "index.ts",
   "type": "module"

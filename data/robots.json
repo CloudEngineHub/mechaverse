@@ -1,0 +1,36 @@
+{
+  "urdf": [
+    {
+      "name": "SO-100",
+      "route": "/capture/urdf?robot=SO-100",
+      "output": "so-100.png"
+    },
+    {
+      "name": "Anymal B",
+      "route": "/capture/urdf?robot=Anymal%20B",
+      "output": "anymal-b.png"
+    },
+    {
+      "name": "Cassie-URDF",
+      "route": "/capture/urdf?robot=Cassie",
+      "output": "cassie-urdf.png"
+    }
+  ],
+  "mjcf": [
+    {
+      "name": "humanoid",
+      "route": "/capture/mjcf?scene=humanoid/humanoid.xml",
+      "output": "humanoid.png"
+    },
+    {
+      "name": "cassie",
+      "route": "/capture/mjcf?scene=cassie/scene.xml",
+      "output": "cassie.png"
+    },
+    {
+      "name": "shadow_right",
+      "route": "/capture/mjcf?scene=shadow_hand/scene_right.xml",
+      "output": "shadow_right.png"
+    }
+  ]
+}

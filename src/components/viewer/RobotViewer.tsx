@@ -15,9 +15,12 @@ import * as THREE from "three";
 // Dynamic import for URDFManipulator to avoid SSR issues
 let URDFManipulator: typeof HTMLElement | null = null;
 
-// Register the URDFManipulator as a custom element if it hasn't been already
+// Register the URDFManipulator as a custom element (idempotent and race-safe)
 const registerURDFManipulator = async () => {
-  if (typeof window !== "undefined" && !customElements.get("urdf-viewer")) {
+  if (typeof window === "undefined") return;
+  const w = window as unknown as { __urdfViewerRegistered?: boolean };
+  if (customElements.get("urdf-viewer") || w.__urdfViewerRegistered) return;
+  try {
     if (!URDFManipulator) {
       const urdfModule = await import(
         "urdf-loader/src/urdf-manipulator-element.js"
@@ -25,6 +28,18 @@ const registerURDFManipulator = async () => {
       URDFManipulator = urdfModule.default;
     }
     customElements.define("urdf-viewer", URDFManipulator);
+    w.__urdfViewerRegistered = true;
+  } catch (error: unknown) {
+    // Ignore re-definition errors caused by concurrent registration attempts
+    const message = (error as Error)?.message || "";
+    if (
+      message.includes("has already been used") ||
+      (error as any)?.name === "NotSupportedError"
+    ) {
+      w.__urdfViewerRegistered = true;
+      return;
+    }
+    throw error;
   }
 };
 
@@ -181,26 +196,26 @@ const UrdfViewer: React.FC = () => {
       // Get the maximum dimension to ensure the entire robot is visible
       const maxDim = Math.max(size.x, size.y, size.z);
 
-      // Position camera to see the center of the model
-      viewer.camera.position.copy(center);
-
-      // Move the camera back to see the entire robot
-      // Use the model's up direction to determine which axis to move along
-      const upVector = new THREE.Vector3();
-      if (viewer.up === "+Z" || viewer.up === "Z") {
-        upVector.set(1, 1, 1); // Move back in a diagonal
-      } else if (viewer.up === "+Y" || viewer.up === "Y") {
-        upVector.set(1, 1, 1); // Move back in a diagonal
-      } else {
-        upVector.set(1, 1, 1); // Default direction
-      }
-
-      // Normalize the vector and multiply by the size
-      upVector.normalize().multiplyScalar(maxDim * 1.3);
-      viewer.camera.position.add(upVector);
-
-      // Make the camera look at the center of the model
+      // Isometric position along (1,1,1)
+      const isoDirection = new THREE.Vector3(1, 1, 1).normalize();
+      const distance = maxDim * 1.8; // padding factor for URDF
+      const position = center
+        .clone()
+        .add(isoDirection.multiplyScalar(distance));
+      viewer.camera.position.copy(position);
       viewer.controls.target.copy(center);
+
+      // Transparent background on canvas if supported
+      try {
+        // @ts-ignore - urdf-viewer exposes renderer on shadow DOM in some builds
+        const r = (viewer as any).renderer as THREE.WebGLRenderer | undefined;
+        if (r) {
+          r.setClearColor(0x000000, 0);
+          r.setClearAlpha(0);
+          (r.getContext().canvas as HTMLCanvasElement).style.background =
+            "transparent";
+        }
+      } catch {}
 
       // Update controls and mark for redraw
       viewer.controls.update();

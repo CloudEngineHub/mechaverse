@@ -34,3 +34,11 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Hide Next.js dev overlay logo/indicator for clean captures in dev */
+/* The dev overlay can inject elements with these attributes/selectors */
+[data-next-overlay],
+#__next-build-watcher,
+[data-nextjs-router-banner] {
+  display: none !important;
+}

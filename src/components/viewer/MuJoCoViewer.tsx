@@ -102,7 +102,7 @@ export default function MujocoViewer({
           referrerPolicy="no-referrer"
         />
 
-        <button
+        {/* <button
           onClick={resetPose}
           aria-label="Reset Pose"
           style={{
@@ -139,7 +139,7 @@ export default function MujocoViewer({
               filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.1))",
             }}
           />
-        </button>
+        </button> */}
       </div>
     </div>
   );

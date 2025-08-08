@@ -20,36 +20,27 @@ export default function FullScreenDragDrop({
       >
         <div className="w-full h-full flex items-center justify-center p-8">
           {/* Card container for drag and drop */}
-          <div className="w-full max-w-2xl bg-[#fef4da] rounded-xl shadow-lg border-3 border-black overflow-hidden">
-            {/* Header */}
-            <div className="p-6 border-b-2 border-black bg-[#fef4da]">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  Upload Robot Files
-                </h2>
-                <button
-                  onClick={onClose}
-                  className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
-                  aria-label="Close"
-                >
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
+          <div className="w-full max-w-2xl bg-[#fef4da] rounded-xl shadow-lg overflow-hidden">
             {/* Card content */}
+            <button
+              onClick={onClose}
+              className="m-2 p-2 transition-colors self-end cursor-pointer"
+              aria-label="Close"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="#968612"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
             <div className="p-8 w-full flex flex-col items-center justify-center min-h-[400px]">
               <div className="text-center">
                 <div className="w-20 h-20 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">

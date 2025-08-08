@@ -324,6 +324,62 @@ window.addEventListener("message", async (event) => {
         );
         break;
 
+      case "SET_TRANSPARENT_BACKGROUND": {
+        try {
+          // Ensure transparent canvas
+          viewer.scene.background = null;
+          if (viewer.renderer) {
+            viewer.renderer.setClearAlpha(0);
+            viewer.renderer.setClearColor(0x000000, 0);
+            const gl = viewer.renderer.getContext();
+            if (gl && gl.canvas && gl.canvas.style) {
+              gl.canvas.style.background = "transparent";
+            }
+          }
+          window.parent.postMessage({ type: "BACKGROUND_SET" }, "*");
+        } catch (e) {
+          window.parent.postMessage({ type: "ERROR", error: String(e) }, "*");
+        }
+        break;
+      }
+
+      case "FIT_ISO": {
+        try {
+          const root = viewer.scene.getObjectByName("MuJoCo Root");
+          if (root) {
+            const box = new THREE.Box3().setFromObject(root);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const radius = maxDim * 0.5;
+
+            const aspect = viewer.renderer.getSize(new THREE.Vector2());
+            // Place camera along isometric direction
+            const dir = new THREE.Vector3(1, 1, 1).normalize();
+            const distance = radius * 2.6; // tuned factor for padding
+            const position = center.clone().add(dir.multiplyScalar(distance));
+
+            viewer.camera.position.copy(position);
+            if (viewer.controls) {
+              viewer.controls.target.copy(center);
+              viewer.controls.update();
+            } else {
+              viewer.camera.lookAt(center);
+            }
+
+            // Optional: disable fog for crisp capture
+            viewer.scene.fog = null;
+
+            // Render a frame
+            viewer.renderer.render(viewer.scene, viewer.camera);
+          }
+          window.parent.postMessage({ type: "FITTED_ISO" }, "*");
+        } catch (e) {
+          window.parent.postMessage({ type: "ERROR", error: String(e) }, "*");
+        }
+        break;
+      }
+
       case "LOAD_XML_CONTENT":
         // Load XML content payload
 

@@ -240,7 +240,6 @@ export function setupGUI(parentContext) {
   });
   parentContext.updateGUICallbacks.push((model, simulation, params) => {
     let nkeys = parentContext.model.nkey;
-    console.log("new model loaded. has " + nkeys + " keyframes.");
     if (nkeys > 0) {
       keyframeGUI.max(nkeys - 1);
       keyframeGUI.domElement.style.opacity = 1.0;
@@ -640,11 +639,6 @@ export async function loadSceneFromURL(mujoco, filename, parent) {
     } else if (bodies[b]) {
       bodies[0].add(bodies[b]);
     } else {
-      console.log(
-        "Body without Geometry detected; adding to bodies",
-        b,
-        bodies[b]
-      );
       bodies[b] = new THREE.Group();
       bodies[b].name = names[b + 1];
       bodies[b].bodyID = b;

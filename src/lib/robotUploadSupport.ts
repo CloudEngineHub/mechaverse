@@ -312,9 +312,7 @@ export async function processSelectedFiles(
     }
   }
 
-  console.log(
-    `[RobotDragAndDrop] processSelectedFiles: packageBasePath determined as '${packageBasePath}'`
-  );
+  // Package base path determined
 
   // Store the package path for future reference and set URL modifier
   urdfProcessor.setUrlModifierFunc(

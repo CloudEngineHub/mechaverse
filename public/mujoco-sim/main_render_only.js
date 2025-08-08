@@ -1,9 +1,7 @@
 import * as THREE from "three";
-import { GUI } from "three/addons/libs/lil-gui.module.min.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 import {
-  setupGUI,
   downloadExampleScenesFolder,
   loadSceneFromURL,
   getPosition,
@@ -60,7 +58,7 @@ export class MuJoCoViewer {
     this.camera.position.set(2.0, 1.7, 1.7);
     this.scene.add(this.camera);
 
-    this.scene.background = new THREE.Color(1.0, 0.9, 0.9);
+    this.scene.background = new THREE.Color(0xfef4da);
     this.scene.fog = new THREE.Fog(this.scene.background, 15, 25.5);
 
     this.ambientLight = new THREE.AmbientLight(0xffffff, 0.1);
@@ -95,12 +93,13 @@ export class MuJoCoViewer {
     try {
       // Download the examples to MuJoCo's virtual file system
       await downloadExampleScenesFolder(mujoco);
+      await downloadMjcfExamplesFolder(mujoco);
 
       // Initialize the three.js Scene using the .xml Model in initialScene
       [this.model, this.state, this.simulation, this.bodies, this.lights] =
         await loadSceneFromURL(mujoco, initialScene, this);
 
-      this.scene.background = new THREE.Color(0xeeeeee);
+      this.scene.background = new THREE.Color(0xfef4da);
 
       // Change the color and material properties of the mesh floor after loading the scene
       // Find the MuJoCo Root group
@@ -131,9 +130,6 @@ export class MuJoCoViewer {
           }
         });
       }
-
-      this.gui = new GUI();
-      setupGUI(this);
 
       // Initialize joint drag manager after simulation is set up
       this.jointDragManager = new JointDragManager(
@@ -253,21 +249,26 @@ export class MuJoCoViewer {
 
 let viewer = new MuJoCoViewer();
 await viewer.init();
+// Signal readiness to the parent so it can send initial scene messages safely
+window.parent.postMessage({ type: "IFRAME_READY" }, "*");
 
 // Set up message handling for parent-iframe communication
 window.addEventListener("message", async (event) => {
-  console.log("📨 Received message in iframe:", event.data);
+  // Received message from parent
 
   try {
     switch (event.data.type) {
+      case "RESET_POSE":
+        if (viewer?.simulation) {
+          viewer.simulation.resetData();
+          viewer.simulation.forward();
+        }
+        break;
       case "LOAD_SCENE":
-        console.log("🔄 Loading scene:", event.data.sceneName);
+        // Load requested scene
 
         // Clear the existing scene
-        const existingRoot = viewer.scene.getObjectByName("MuJoCo Root");
-        if (existingRoot) {
-          viewer.scene.remove(existingRoot);
-        }
+        removeAllMujocoRoots(viewer);
 
         // Reload the scene with the new XML file
         [
@@ -282,6 +283,9 @@ window.addEventListener("message", async (event) => {
         if (viewer.jointDragManager) {
           viewer.jointDragManager.simulation = viewer.simulation;
         }
+        // Reliability reset: mimic reset button after load
+        viewer.simulation.resetData();
+        viewer.simulation.forward();
 
         // Notify parent that scene was loaded
         window.parent.postMessage(
@@ -293,14 +297,38 @@ window.addEventListener("message", async (event) => {
         );
         break;
 
+      case "LOAD_PUBLIC_SCENE":
+        // Load MJCF from public/mjcf
+        removeAllMujocoRoots(viewer);
+        await ensureMjcfInVFS(mujoco, event.data.path);
+        [
+          viewer.model,
+          viewer.state,
+          viewer.simulation,
+          viewer.bodies,
+          viewer.lights,
+        ] = await loadSceneFromURL(mujoco, event.data.path, viewer);
+
+        if (viewer.jointDragManager) {
+          viewer.jointDragManager.simulation = viewer.simulation;
+        }
+        viewer.simulation.resetData();
+        viewer.simulation.forward();
+
+        window.parent.postMessage(
+          {
+            type: "SCENE_LOADED",
+            sceneName: event.data.path,
+          },
+          "*"
+        );
+        break;
+
       case "LOAD_XML_CONTENT":
-        console.log("🔄 Loading XML content:", event.data.fileName);
+        // Load XML content payload
 
         // Clear the existing scene
-        const existingRoot2 = viewer.scene.getObjectByName("MuJoCo Root");
-        if (existingRoot2) {
-          viewer.scene.remove(existingRoot2);
-        }
+        removeAllMujocoRoots(viewer);
 
         // Write the XML content to MuJoCo's virtual file system
         mujoco.FS.writeFile(
@@ -321,6 +349,8 @@ window.addEventListener("message", async (event) => {
         if (viewer.jointDragManager) {
           viewer.jointDragManager.simulation = viewer.simulation;
         }
+        viewer.simulation.resetData();
+        viewer.simulation.forward();
 
         // Notify parent that scene was loaded
         window.parent.postMessage(
@@ -333,7 +363,7 @@ window.addEventListener("message", async (event) => {
         break;
 
       default:
-        console.log("📨 Unknown message type:", event.data.type);
+      // Unknown message type
     }
   } catch (error) {
     console.error("❌ Error handling message:", error);
@@ -348,3 +378,87 @@ window.addEventListener("message", async (event) => {
     );
   }
 });
+
+// Prefetch and mount files from public/mjcf into the VFS so relative asset paths work
+async function downloadMjcfExamplesFolder(mujoco) {
+  const files = [
+    // humanoid
+    "humanoid/humanoid.xml",
+    // cassie
+    "cassie/assets/achilles-rod.obj",
+    "cassie/assets/cassie-texture.png",
+    "cassie/assets/foot-crank.obj",
+    "cassie/assets/foot.obj",
+    "cassie/assets/heel-spring.obj",
+    "cassie/assets/hip-pitch.obj",
+    "cassie/assets/hip-roll.obj",
+    "cassie/assets/hip-yaw.obj",
+    "cassie/assets/knee-spring.obj",
+    "cassie/assets/knee.obj",
+    "cassie/assets/pelvis.obj",
+    "cassie/assets/plantar-rod.obj",
+    "cassie/assets/shin.obj",
+    "cassie/assets/tarsus.obj",
+    "cassie/cassie.xml",
+    "cassie/scene.xml",
+    // shadow hand
+    "shadow_hand/assets/f_distal_pst.obj",
+    "shadow_hand/assets/f_knuckle.obj",
+    "shadow_hand/assets/f_middle.obj",
+    "shadow_hand/assets/f_proximal.obj",
+    "shadow_hand/assets/forearm_0.obj",
+    "shadow_hand/assets/forearm_1.obj",
+    "shadow_hand/assets/forearm_collision.obj",
+    "shadow_hand/assets/lf_metacarpal.obj",
+    "shadow_hand/assets/mounting_plate.obj",
+    "shadow_hand/assets/palm.obj",
+    "shadow_hand/assets/th_distal_pst.obj",
+    "shadow_hand/assets/th_middle.obj",
+    "shadow_hand/assets/th_proximal.obj",
+    "shadow_hand/assets/wrist.obj",
+    "shadow_hand/left_hand.xml",
+    "shadow_hand/right_hand.xml",
+    "shadow_hand/scene_left.xml",
+    "shadow_hand/scene_right.xml",
+  ];
+
+  const requests = files.map((p) => fetch("../mjcf/" + p));
+  const responses = await Promise.all(requests);
+  for (let i = 0; i < responses.length; i++) {
+    const path = files[i];
+    const parts = path.split("/");
+    let dir = "/working/";
+    for (let j = 0; j < parts.length - 1; j++) {
+      dir += parts[j];
+      if (!mujoco.FS.analyzePath(dir).exists) mujoco.FS.mkdir(dir);
+      dir += "/";
+    }
+    if (path.endsWith(".png") || path.endsWith(".obj")) {
+      mujoco.FS.writeFile(
+        "/working/" + path,
+        new Uint8Array(await responses[i].arrayBuffer())
+      );
+    } else {
+      mujoco.FS.writeFile("/working/" + path, await responses[i].text());
+    }
+  }
+}
+
+// Ensure a specific public MJCF path is present in VFS (idempotent)
+async function ensureMjcfInVFS(mujoco, path) {
+  const full = "/working/" + path;
+  if (mujoco.FS.analyzePath(full).exists) return;
+  // Download the whole folder for reliability
+  await downloadMjcfExamplesFolder(mujoco);
+}
+
+function removeAllMujocoRoots(viewer) {
+  try {
+    let root;
+    while ((root = viewer.scene.getObjectByName("MuJoCo Root"))) {
+      viewer.scene.remove(root);
+    }
+  } catch (e) {
+    console.warn("Failed to clear MuJoCo roots", e);
+  }
+}

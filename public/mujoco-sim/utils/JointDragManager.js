@@ -26,17 +26,19 @@ export class JointDragManager {
     this.jointIndicator.visible = false;
     this.scene.add(this.jointIndicator);
 
-    // Text indicator for joint info
+    // Text indicator for joint info (styled to match overlay style)
     this.jointInfo = document.createElement("div");
     this.jointInfo.style.position = "absolute";
-    this.jointInfo.style.top = "10px";
-    this.jointInfo.style.right = "10px";
-    this.jointInfo.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
-    this.jointInfo.style.color = "white";
-    this.jointInfo.style.padding = "10px";
-    this.jointInfo.style.borderRadius = "5px";
-    this.jointInfo.style.fontFamily = "Arial, sans-serif";
-    this.jointInfo.style.fontSize = "12px";
+    this.jointInfo.style.bottom = "16px";
+    this.jointInfo.style.right = "16px";
+    this.jointInfo.style.background = "rgba(0,0,0,0.7)";
+    this.jointInfo.style.color = "#fff";
+    this.jointInfo.style.padding = "8px 12px";
+    this.jointInfo.style.borderRadius = "8px";
+    this.jointInfo.style.fontFamily =
+      "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+    this.jointInfo.style.fontSize = "13px";
+    this.jointInfo.style.fontWeight = "500";
     this.jointInfo.style.display = "none";
     this.jointInfo.style.zIndex = "1000";
     document.body.appendChild(this.jointInfo);
@@ -91,27 +93,7 @@ export class JointDragManager {
       }
     });
 
-    // Log all detected body IDs
-    console.log(
-      "🔍 All detected body IDs:",
-      allObjects.map((obj) => obj.bodyID)
-    );
-
-    // Log simulation model info
-    if (this.simulation && this.simulation.model) {
-      console.log("📊 Simulation model info:");
-      console.log("  - nbody:", this.simulation.model.nbody);
-      console.log(
-        "  - body_jntadr length:",
-        this.simulation.model.body_jntadr
-          ? this.simulation.model.body_jntadr.length
-          : "undefined"
-      );
-      console.log(
-        "  - Valid body ID range: 0 to",
-        this.simulation.model.nbody - 1
-      );
-    }
+    // Optional debug: detected body IDs and simulation info (removed for production)
 
     const intersects = this.raycaster.intersectObjects(allObjects);
 
@@ -141,7 +123,7 @@ export class JointDragManager {
         // Show joint info
         this.showJointInfo(obj.bodyID);
 
-        console.log(`🎯 Started dragging joint on body ${obj.bodyID}`);
+        // Dragging joint started
         break;
       }
     }
@@ -181,20 +163,41 @@ export class JointDragManager {
   }
 
   updateJointPosition() {
-    if (!this.draggedJoint || !this.simulation) return;
+    if (!this.draggedJoint || !this.simulation || !this.simulation.model)
+      return;
 
     const bodyID = this.draggedJoint.bodyID;
     if (bodyID === undefined || bodyID < 0) return;
 
-    // Get the current world position of the cursor
-    const targetPosition = this.currentWorld.clone();
+    // Use mocap body if available: attach this body to a mocap controller dynamically
+    // Strategy: move the subtree root via mocap and let MuJoCo enforce constraints.
+    // Find root body that has a free joint (for mocap-style movement). If none, fall back to position set.
 
-    // Convert to MuJoCo coordinates
+    const model = this.simulation.model;
+    const rootCandidate = model.body_rootid ? model.body_rootid[bodyID] : 0;
+
+    const targetPosition = this.currentWorld.clone();
     const mujocoTarget = this.toMujocoPos(targetPosition);
 
-    // Directly set the body position to follow the cursor
-    this.setBodyPosition(bodyID, mujocoTarget);
-    // No simulation.forward() call here
+    try {
+      // Apply pose to the body; when paused flag is 1, MuJoCo treats this as a perturbation target.
+      // We set orientation unchanged (identity delta), only position moved.
+      this.simulation.applyPose(
+        bodyID,
+        mujocoTarget.x,
+        mujocoTarget.y,
+        mujocoTarget.z,
+        1,
+        0,
+        0,
+        0,
+        1
+      );
+      this.simulation.forward();
+    } catch (e) {
+      // Fallback: directly update body position buffer (less physical but interactive)
+      this.setBodyPosition(bodyID, mujocoTarget);
+    }
   }
 
   setBodyPosition(bodyID, targetPosition) {
@@ -219,7 +222,7 @@ export class JointDragManager {
   }
 
   showJointInfo(bodyID) {
-    this.jointInfo.innerHTML = `Body: ${bodyID}<br><small>Drag to move body</small>`;
+    this.jointInfo.innerHTML = `Component ID: ${bodyID}`;
     this.jointInfo.style.display = "block";
   }
 
@@ -232,7 +235,7 @@ export class JointDragManager {
     this.jointInfo.style.display = "none";
     this.mouseDown = false;
 
-    console.log("🎯 Stopped dragging joint");
+    // Dragging joint stopped
   }
 
   onPointer(evt) {

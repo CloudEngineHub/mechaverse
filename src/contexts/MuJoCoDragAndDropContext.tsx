@@ -31,13 +31,12 @@ export const MuJoCoDragAndDropProvider: React.FC<
     );
 
     if (xmlFiles.length === 0) {
-      console.warn("⚠️ No XML files found in dropped files");
+      console.warn("No XML files found in dropped files");
       return;
     }
 
     // For now, we'll handle the first XML file
     const xmlFile = xmlFiles[0];
-    console.log("📄 Processing XML file:", xmlFile.name);
 
     try {
       // Read the file content
@@ -54,31 +53,34 @@ export const MuJoCoDragAndDropProvider: React.FC<
           },
           "*"
         );
-        console.log("📤 Sent XML content to iframe:", xmlFile.name);
+        // Sent XML content to iframe
       }
     } catch (error) {
       console.error("❌ Error processing XML file:", error);
     }
   };
 
-  const handleDrop = useCallback(async (e: DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
+  const handleDrop = useCallback(
+    async (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragging(false);
 
-    console.log("🔄 MuJoCo DragAndDropContext: Drop event detected");
+      // Drop event detected
 
-    if (!e.dataTransfer) {
-      console.error("❌ No dataTransfer available");
-      return;
-    }
+      if (!e.dataTransfer) {
+        console.error("No dataTransfer available");
+        return;
+      }
 
-    try {
-      await processDroppedFiles(e.dataTransfer);
-    } catch (error) {
-      console.error("❌ Error in handleDrop:", error);
-    }
-  }, []);
+      try {
+        await processDroppedFiles(e.dataTransfer);
+      } catch (error) {
+        console.error("❌ Error in handleDrop:", error);
+      }
+    },
+    [processDroppedFiles]
+  );
 
   return (
     <MuJoCoDragAndDropContext.Provider

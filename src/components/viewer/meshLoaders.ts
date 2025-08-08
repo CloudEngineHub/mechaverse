@@ -51,9 +51,6 @@ export const loadMeshFile = (
     "webp",
   ];
   if (textureExtensions.includes(ext)) {
-    console.log(
-      `Skipping texture file: ${path} - letting URDF viewer handle natively`
-    );
     // Return null to indicate this file should be handled by the URDF viewer's default texture loading
     done(null);
     return;

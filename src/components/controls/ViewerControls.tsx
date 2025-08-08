@@ -16,26 +16,14 @@ export type FileType = "URDF" | "MJCF" | "SDF" | "USD";
 export interface Example {
   name: string;
   fileType: FileType;
-  path?: string; // URDF file path for examples
+  path?: string;
 }
 
 const examples: Record<FileType, Example[]> = {
   URDF: [
-    {
-      name: "Cassie",
-      fileType: "URDF",
-      path: "/urdf/cassie/cassie.urdf",
-    },
-    {
-      name: "SO-100",
-      fileType: "URDF",
-      path: "/urdf/so-100/so_100.urdf",
-    },
-    {
-      name: "Anymal B",
-      fileType: "URDF",
-      path: "/urdf/anymal-b/anymal.urdf",
-    },
+    { name: "Cassie", fileType: "URDF", path: "/urdf/cassie/cassie.urdf" },
+    { name: "SO-100", fileType: "URDF", path: "/urdf/so-100/so_100.urdf" },
+    { name: "Anymal B", fileType: "URDF", path: "/urdf/anymal-b/anymal.urdf" },
   ],
   MJCF: [
     { name: "Humanoid", fileType: "MJCF", path: "/mjcf/humanoid/humanoid.xml" },
@@ -47,62 +35,40 @@ const examples: Record<FileType, Example[]> = {
     },
   ],
   SDF: [
-    {
-      name: "TurtleBot3",
-      fileType: "SDF",
-    },
-    {
-      name: "PR2",
-      fileType: "SDF",
-    },
-    {
-      name: "Pioneer",
-      fileType: "SDF",
-    },
+    { name: "TurtleBot3", fileType: "SDF" },
+    { name: "PR2", fileType: "SDF" },
+    { name: "Pioneer", fileType: "SDF" },
   ],
   USD: [
-    {
-      name: "Industrial",
-      fileType: "USD",
-    },
-    {
-      name: "Drone",
-      fileType: "USD",
-    },
-    {
-      name: "Bike",
-      fileType: "USD",
-    },
+    { name: "Industrial", fileType: "USD" },
+    { name: "Drone", fileType: "USD" },
+    { name: "Bike", fileType: "USD" },
   ],
 };
 
-interface RobotSelectorProps {
+interface ViewerControlsProps {
   onUploadClick: () => void;
   onExampleLoad?: (example: Example) => void;
   onFileTypeChange?: (fileType: FileType) => void;
+  onToggleSimulation?: () => void;
+  isSimulation?: boolean;
 }
 
-// Deprecated: kept for backward-compat imports during refactor. Prefer components/controls/ViewerControls.
 export default function ViewerControls({
   onUploadClick,
   onExampleLoad,
   onFileTypeChange,
   onToggleSimulation,
   isSimulation,
-}: RobotSelectorProps & {
-  onToggleSimulation?: () => void;
-  isSimulation?: boolean;
-}) {
+}: ViewerControlsProps) {
   const [selectedFileType, setSelectedFileType] = useState<FileType>("MJCF");
   const { selectedRobot, loadExampleRobot } = useRobot();
   const { loadPublicScene, currentScenePath } = useMujocoViewer();
 
-  // Notify parent when file type changes
   useEffect(() => {
     onFileTypeChange?.(selectedFileType);
   }, [selectedFileType, onFileTypeChange]);
 
-  // Default to Cassie when MJCF is selected and no scene loaded yet
   useEffect(() => {
     if (selectedFileType === "MJCF" && !currentScenePath) {
       loadPublicScene("cassie/scene.xml");
@@ -115,7 +81,6 @@ export default function ViewerControls({
     } else if (example.fileType === "MJCF" && example.path) {
       setSelectedFileType("MJCF");
       loadPublicScene(example.path.replace("/mjcf/", ""));
-      // Also inform any parent listeners
       onFileTypeChange?.("MJCF");
     }
     onExampleLoad?.(example);

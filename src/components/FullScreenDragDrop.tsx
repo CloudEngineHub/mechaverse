@@ -5,14 +5,19 @@ import { DragAndDropProvider } from "@/contexts/DragAndDropContext";
 
 interface FullScreenDragDropProps {
   onClose: () => void;
+  onSwitchToMjcf?: () => void;
 }
 
 export default function FullScreenDragDrop({
   onClose,
+  onSwitchToMjcf,
 }: FullScreenDragDropProps) {
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-      <DragAndDropProvider onFilesProcessed={onClose}>
+      <DragAndDropProvider
+        onFilesProcessed={onClose}
+        onSwitchToMjcf={onSwitchToMjcf}
+      >
         <div className="w-full h-full flex items-center justify-center p-8">
           {/* Card container for drag and drop */}
           <div className="w-full max-w-2xl bg-[#fef4da] rounded-xl shadow-lg border-3 border-black overflow-hidden">

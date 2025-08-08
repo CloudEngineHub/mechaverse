@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Mechaverse-MuJoCo (Simulation)</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="application-name" content="mechaverse-mujoco" />
+    <meta name="description" content="Mechaverse MuJoCo Simulation" />
+    <meta name="keywords" content="MuJoCo" />
+    <meta name="author" content="jurmy24" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover, user-scalable=no, shrink-to-fit=0"
+    />
+    <link rel="icon" type="image/x-icon" href="favicon.png" />
+  </head>
+  <body
+    style="
+      margin: 0px;
+      padding: 0px;
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+      touch-action: none;
+      -webkit-touch-callout: none; /* iOS Safari */
+      -webkit-user-select: none; /* Safari */
+      -khtml-user-select: none; /* Konqueror HTML */
+      -moz-user-select: none; /* Old versions of Firefox */
+      -ms-user-select: none; /* Internet Explorer/Edge */
+      user-select: none; /* Non-prefixed version, supported by Chrome, Edge, Opera and Firefox */
+    "
+  >
+    <h1 hidden></h1>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "/mujoco-sim/node_modules/three/build/three.module.js",
+          "three/addons/": "/mujoco-sim/node_modules/three/examples/jsm/"
+        }
+      }
+    </script>
+    <script type="module" src="./main_with_assets.js"></script>
+  </body>
+  </html>

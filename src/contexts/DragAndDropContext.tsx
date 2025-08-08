@@ -10,6 +10,7 @@ import React, {
 
 import { processDroppedFiles } from "@/lib/robotUploadSupport";
 import { useRobot } from "@/hooks/useRobot";
+import { useMujocoViewer } from "@/contexts/MujocoViewerContext";
 
 export type DragAndDropContextType = {
   isDragging: boolean;
@@ -25,17 +26,20 @@ export const DragAndDropContext = createContext<
 interface DragAndDropProviderProps {
   children: ReactNode;
   onFilesProcessed?: () => void;
+  onSwitchToMjcf?: () => void;
 }
 
 export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
   children,
   onFilesProcessed,
+  onSwitchToMjcf,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Get the URDF context
+  // Get contexts
   const { urdfProcessor, processRobotFiles } = useRobot();
+  const { loadXmlContent } = useMujocoViewer();
 
   const handleDragOver = (e: DragEvent) => {
     e.preventDefault();
@@ -65,32 +69,52 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
       e.stopPropagation();
       setIsDragging(false);
 
-      console.log("🔄 DragAndDropContext: Drop event detected");
+      // Drop event detected
 
-      if (!e.dataTransfer || !urdfProcessor) {
-        console.error("❌ No dataTransfer or urdfProcessor available");
-        return;
-      }
+      if (!e.dataTransfer) return;
 
       try {
-        console.log("🔍 Processing dropped files with urdfProcessor");
-
-        // Process files first
-        const { availableModels, files } = await processDroppedFiles(
-          e.dataTransfer,
-          urdfProcessor
+        const files = Array.from(e.dataTransfer.files);
+        const xmlFile = files.find((f) =>
+          f.name.toLowerCase().endsWith(".xml")
+        );
+        const urdfExists = files.some((f) =>
+          f.name.toLowerCase().endsWith(".urdf")
         );
 
-        // Delegate further processing to UrdfContext
-        await processRobotFiles(files, availableModels);
+        if (xmlFile) {
+          const xml = await xmlFile.text();
+          loadXmlContent(xmlFile.name, xml);
+          // Allow parent to switch UI to MJCF if currently in URDF view
+          onSwitchToMjcf?.();
+          onFilesProcessed?.();
+          return;
+        }
 
-        // Call the callback if provided
-        onFilesProcessed?.();
+        if (urdfExists && urdfProcessor) {
+          const { availableModels, files: fileMap } = await processDroppedFiles(
+            e.dataTransfer,
+            urdfProcessor
+          );
+          await processRobotFiles(fileMap, availableModels);
+          onFilesProcessed?.();
+          return;
+        }
+
+        // Fallback: try URDF pipeline if processor available
+        if (urdfProcessor) {
+          const { availableModels, files: fileMap } = await processDroppedFiles(
+            e.dataTransfer,
+            urdfProcessor
+          );
+          await processRobotFiles(fileMap, availableModels);
+          onFilesProcessed?.();
+        }
       } catch (error) {
         console.error("❌ Error in handleDrop:", error);
       }
     },
-    [urdfProcessor, processRobotFiles]
+    [urdfProcessor, processRobotFiles, loadXmlContent]
   );
 
   // Set up event listeners on the container

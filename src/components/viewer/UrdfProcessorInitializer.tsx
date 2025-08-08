@@ -12,12 +12,10 @@ const UrdfProcessorInitializer: React.FC = () => {
   const urdfProcessor = useMemo(
     () => ({
       loadUrdf: (urdfPath: string) => {
-        console.log("📂 URDF path set:", urdfPath);
         // This will be handled by the actual viewer component
         return urdfPath;
       },
       setUrlModifierFunc: (func: (url: string) => string) => {
-        console.log("🔗 URL modifier function set");
         return func;
       },
       getPackage: () => {

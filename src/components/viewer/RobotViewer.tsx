@@ -85,15 +85,12 @@ const UrdfViewer: React.FC = () => {
   // Listen for robot detection events
   useEffect(() => {
     const unsubscribe = onRobotDetected((result) => {
-      console.log("🤖 Robot detection callback triggered:", result);
       if (result.hasRobot && result.modelName) {
-        console.log("🤖 Robot detected:", result.modelName);
         // Only set hasDroppedRobot to true if it's not a selected example robot
         if (!selectedRobot || result.modelName !== selectedRobot) {
           setHasDroppedRobot(true);
         }
       } else {
-        console.log("❌ No robot detected");
         setHasDroppedRobot(false);
       }
     });
@@ -218,8 +215,6 @@ const UrdfViewer: React.FC = () => {
     if (!viewerRef.current || !selectedRobot || !robotPathMap[selectedRobot])
       return;
 
-    console.log("🔄 Loading selected robot:", selectedRobot);
-
     const urdfPath = robotPathMap[selectedRobot];
 
     // Clear the current robot by removing the urdf attribute first
@@ -229,13 +224,10 @@ const UrdfViewer: React.FC = () => {
     setTimeout(() => {
       if (viewerRef.current) {
         // Update the mesh loader first to ensure it's ready for the new URDF
-        console.log("🔄 Updating mesh loader before loading URDF");
         setupMeshLoader(viewerRef.current, urlModifierFunc);
 
         // Add a one-time event listener to confirm the URDF is processed
         const onUrdfProcessed = () => {
-          console.log("✅ URDF processed successfully:", urdfPath);
-
           // Fit robot to view after it's loaded
           if (viewerRef.current) {
             fitRobotToView(viewerRef.current);
@@ -256,8 +248,6 @@ const UrdfViewer: React.FC = () => {
         if (viewerRef.current.redraw) {
           viewerRef.current.redraw();
         }
-
-        console.log("🔄 URDF attributes set, redraw called");
       }
     }, 100);
   }, [selectedRobot, urlModifierFunc]);
@@ -266,15 +256,11 @@ const UrdfViewer: React.FC = () => {
   useEffect(() => {
     if (!viewerRef.current || !hasDroppedRobot || !customUrdfPath) return;
 
-    console.log("🔄 Loading dropped robot:", customUrdfPath);
-
     // Update the viewer with the new URDF
     const loadPath =
       customUrdfPath.startsWith("blob:") && !customUrdfPath.includes("#.")
         ? customUrdfPath + "#.urdf"
         : customUrdfPath;
-
-    console.log("🔄 Setting URDF path:", loadPath);
 
     // Clear the current robot by removing the urdf attribute first
     viewerRef.current.removeAttribute("urdf");
@@ -283,13 +269,10 @@ const UrdfViewer: React.FC = () => {
     setTimeout(() => {
       if (viewerRef.current) {
         // Update the mesh loader first to ensure it's ready for the new URDF
-        console.log("🔄 Updating mesh loader before loading URDF");
         setupMeshLoader(viewerRef.current, urlModifierFunc);
 
         // Add a one-time event listener to confirm the URDF is processed
         const onUrdfProcessed = () => {
-          console.log("✅ URDF processed successfully:", loadPath);
-
           // Fit robot to view after it's loaded
           if (viewerRef.current) {
             fitRobotToView(viewerRef.current);
@@ -310,8 +293,6 @@ const UrdfViewer: React.FC = () => {
         if (viewerRef.current.redraw) {
           viewerRef.current.redraw();
         }
-
-        console.log("🔄 URDF attributes set, redraw called");
       }
     }, 100);
   }, [customUrdfPath, hasDroppedRobot, urlModifierFunc]);
@@ -320,13 +301,10 @@ const UrdfViewer: React.FC = () => {
   useEffect(() => {
     if (!viewerRef.current) return;
 
-    console.log("🔄 Updating mesh loader with new URL modifier function");
-
     // Create a debug wrapper for the URL modifier function
     const debugUrlModifier = urlModifierFunc
       ? (url: string) => {
           const result = urlModifierFunc(url);
-          console.log(`🔗 URL modifier: ${url} -> ${result}`);
           return result;
         }
       : null;

@@ -1,17 +1,21 @@
 "use client";
 
 import RobotViewer from "@/components/viewer/RobotViewer";
-import RobotSelector from "@/components/RobotSelector";
+import ViewerControls from "@/components/controls/ViewerControls";
 import FullScreenDragDrop from "@/components/FullScreenDragDrop";
 import { RobotProvider } from "@/contexts/RobotContext";
-import MuJoCoViewer from "@/components/viewer/MuJoCoViewer";
+import MujocoViewer from "@/components/viewer/MuJoCoViewer";
+import { MujocoViewerProvider } from "@/contexts/MujocoViewerContext";
 import Link from "next/link";
 import { useState } from "react";
-import { FileType } from "@/components/RobotSelector";
+import { FileType } from "@/components/controls/ViewerControls";
 
 export default function Home() {
   const [showFullScreenDragDrop, setShowFullScreenDragDrop] = useState(false);
-  const [selectedFileType, setSelectedFileType] = useState<FileType>("URDF");
+  const [selectedFileType, setSelectedFileType] = useState<FileType>("MJCF");
+  const [useSimulation, setUseSimulation] = useState<boolean>(false);
+
+  const switchToMjcf = () => setSelectedFileType("MJCF");
 
   return (
     <div className="w-full h-screen flex flex-col">
@@ -20,7 +24,7 @@ export default function Home() {
         {/* Left side: Logo, GitHub and Discord icons/links */}
         <div className="flex items-center gap-6">
           <Link
-            href="https://www.place-holder.dev/"
+            href="/"
             className="hover:-translate-y-1 hover:opacity-80 transition-all flex items-center gap-2 group"
             aria-label="Home"
           >
@@ -85,47 +89,56 @@ export default function Home() {
         {/* Add more navbar items here if needed */}
       </nav>
       {/* Main content area */}
-      <main className="flex flex-1 w-full h-[90vh] min-h-0 bg-[#fefdf7] p-6">
+      <MujocoViewerProvider>
         <RobotProvider>
-          <div className="flex flex-row w-full h-full gap-6">
-            {/* Robot Selector section */}
-            <div className="flex-[2] min-w-0 h-full flex items-center justify-center">
-              {/* Card container for robot selector */}
-              <div className="w-full h-full bg-[#fef4da] rounded-xl shadow-lg border-3 border-black overflow-hidden">
-                {/* Card content */}
-                <div className="w-full h-full">
-                  <RobotSelector
-                    onUploadClick={() => setShowFullScreenDragDrop(true)}
-                    onFileTypeChange={setSelectedFileType}
-                  />
+          <main className="flex flex-1 w-full h-[90vh] min-h-0 bg-[#fefdf7] p-6">
+            <div className="flex flex-row w-full h-full gap-6">
+              {/* Robot Selector section */}
+              <div className="flex-[2] min-w-0 h-full flex items-center justify-center">
+                {/* Card container for robot selector */}
+                <div className="w-full h-full bg-[#fef4da] rounded-xl shadow-lg border-3 border-black overflow-hidden">
+                  {/* Card content */}
+                  <div className="w-full h-full">
+                    <ViewerControls
+                      onUploadClick={() => setShowFullScreenDragDrop(true)}
+                      onFileTypeChange={setSelectedFileType}
+                      onToggleSimulation={() => setUseSimulation((v) => !v)}
+                      isSimulation={useSimulation}
+                    />
+                  </div>
+                </div>
+              </div>
+              {/* Viewer section */}
+              <div
+                className="flex-[5] min-w-0 h-full flex items-center justify-center"
+                style={{ minWidth: "60%" }}
+              >
+                {/* Card container for viewer */}
+                <div className="w-full h-full bg-[#fef4da] rounded-xl shadow-lg border-3 border-black overflow-hidden">
+                  {/* Card content */}
+                  <div className="w-full h-full">
+                    {selectedFileType === "MJCF" ? (
+                      <MujocoViewer useSimulation={useSimulation} />
+                    ) : (
+                      <RobotViewer />
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-            {/* Viewer section */}
-            <div
-              className="flex-[3] min-w-0 h-full flex items-center justify-center"
-              style={{ minWidth: "60%" }}
-            >
-              {/* Card container for viewer */}
-              <div className="w-full h-full bg-[#fef4da] rounded-xl shadow-lg border-3 border-black overflow-hidden">
-                {/* Card content */}
-                <div className="w-full h-full">
-                  {selectedFileType === "MJCF" ? (
-                    <MuJoCoViewer />
-                  ) : (
-                    <RobotViewer />
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </RobotProvider>
-      </main>
+          </main>
 
-      {/* Full Screen Drag Drop Overlay */}
-      {showFullScreenDragDrop && (
-        <FullScreenDragDrop onClose={() => setShowFullScreenDragDrop(false)} />
-      )}
+          {/* Full Screen Drag Drop Overlay */}
+          {showFullScreenDragDrop && (
+            <div className="absolute inset-0">
+              <FullScreenDragDrop
+                onClose={() => setShowFullScreenDragDrop(false)}
+                onSwitchToMjcf={switchToMjcf}
+              />
+            </div>
+          )}
+        </RobotProvider>
+      </MujocoViewerProvider>
     </div>
   );
 }

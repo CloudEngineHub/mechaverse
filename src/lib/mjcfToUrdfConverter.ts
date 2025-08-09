@@ -505,8 +505,7 @@ export class MjcfToUrdfConverter {
           
           // Add joint axis - extract from xyaxes or use default
           const axis = this.extractJointAxis(child, joint);
-          const axisType = joint.axis ? "explicit" : (child.xyaxes ? "own_xyaxes" : (this.findParentXyaxes(child, this.currentModel!.worldbody) ? "parent_xyaxes" : "default_x"));
-          console.log(`🔧 Joint ${joint.name}: type=${joint.type}, axis_source="${axisType}", final_axis="${axis}"`);
+          // console.log(`🔧 Joint ${joint.name}: type=${joint.type}, explicit_axis="${joint.axis}", body_xyaxes="${child.xyaxes}", final_axis="${axis}"`);
           urdfLines.push(`    <axis xyz="${axis}"/>`);
           
           // Add joint limits if available
@@ -514,9 +513,25 @@ export class MjcfToUrdfConverter {
             const range = joint.range.split(' ').map(parseFloat);
             // Convert to radians if needed
             const conversionFactor = this.currentModel?.angleUnit === 'radian' ? 1 : Math.PI / 180;
-            const lower = range[0] * conversionFactor;
-            const upper = range[1] * conversionFactor;
+            
+            // Account for reference position if specified
+            let lower = range[0] * conversionFactor;
+            let upper = range[1] * conversionFactor;
+            
+            if (joint.ref) {
+              const refPos = parseFloat(joint.ref) * conversionFactor;
+              // MJCF ranges are typically relative to the reference position
+              // For URDF, we need to adjust them to be relative to zero
+              lower = lower - refPos;
+              upper = upper - refPos;
+              console.log(`🔧 Range ${joint.name}: raw="${joint.range}", ref="${joint.ref}" (${refPos} rad), adjusted final=[${lower}, ${upper}]`);
+            } else {
+              console.log(`🔧 Range ${joint.name}: raw="${joint.range}", no ref, final=[${lower}, ${upper}]`);
+            }
+            
             urdfLines.push(`    <limit lower="${lower}" upper="${upper}" effort="100" velocity="10"/>`);
+          } else {
+            console.log(`🔧 Range ${joint.name}: NO RANGE (range="${joint.range}", type="${joint.type}")`);
           }
           
           // Add dynamics if available

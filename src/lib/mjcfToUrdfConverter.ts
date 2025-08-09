@@ -464,6 +464,29 @@ export class MjcfToUrdfConverter {
   }
 
   /**
+   * Find xyaxes from parent bodies when current body has none
+   */
+  private findParentXyaxes(targetBody: MjcfBody, rootBody: MjcfBody): string | undefined {
+    // Recursively search for the target body and track parent xyaxes
+    const findInTree = (body: MjcfBody, parentXyaxes?: string): string | undefined => {
+      if (body.name === targetBody.name) {
+        return parentXyaxes;
+      }
+      
+      const currentXyaxes = body.xyaxes || parentXyaxes;
+      
+      for (const child of body.children) {
+        const result = findInTree(child, currentXyaxes);
+        if (result) return result;
+      }
+      
+      return undefined;
+    };
+    
+    return findInTree(rootBody);
+  }
+
+  /**
    * Generate URDF joints recursively
    */
   private generateJointsRecursive(body: MjcfBody, urdfLines: string[], parentName: string | null): void {
@@ -482,7 +505,8 @@ export class MjcfToUrdfConverter {
           
           // Add joint axis - extract from xyaxes or use default
           const axis = this.extractJointAxis(child, joint);
-          console.log(`🔧 Joint ${joint.name}: type=${joint.type}, explicit_axis="${joint.axis}", body_xyaxes="${child.xyaxes}", final_axis="${axis}"`);
+          const axisType = joint.axis ? "explicit" : (child.xyaxes ? "own_xyaxes" : (this.findParentXyaxes(child, this.currentModel!.worldbody) ? "parent_xyaxes" : "default_x"));
+          console.log(`🔧 Joint ${joint.name}: type=${joint.type}, axis_source="${axisType}", final_axis="${axis}"`);
           urdfLines.push(`    <axis xyz="${axis}"/>`);
           
           // Add joint limits if available
@@ -616,16 +640,38 @@ export class MjcfToUrdfConverter {
     
     // For hinge joints, try to extract rotation axis from body orientation
     if (joint.type === 'hinge') {
-      if (body.xyaxes) {
-        // The default rotation axis for a hinge joint in MJCF is the X-axis of the local frame
-        const axes = body.xyaxes.split(' ').map(parseFloat);
+      // First try the body's own xyaxes
+      let xyaxes = body.xyaxes;
+      
+      // If this body has no xyaxes, try to find a parent body with xyaxes
+      if (!xyaxes && this.currentModel) {
+        xyaxes = this.findParentXyaxes(body, this.currentModel.worldbody);
+      }
+      
+      if (xyaxes) {
+        const axes = xyaxes.split(' ').map(parseFloat);
         if (axes.length >= 6) {
           const xaxis = [axes[0], axes[1], axes[2]];
+          const yaxis = [axes[3], axes[4], axes[5]];
           
-          // Normalize x-axis (should already be normalized, but just in case)
-          const length = Math.sqrt(xaxis[0]*xaxis[0] + xaxis[1]*xaxis[1] + xaxis[2]*xaxis[2]);
+       
+            const zaxis = [
+              xaxis[1] * yaxis[2] - xaxis[2] * yaxis[1],
+              xaxis[2] * yaxis[0] - xaxis[0] * yaxis[2],
+              xaxis[0] * yaxis[1] - xaxis[1] * yaxis[0]
+            ];
+            // Try both X-axis and Z-axis, choose based on which is more aligned with a primary axis
+          // This heuristic: if Z-axis is close to a primary axis (X, Y, or Z), use it; otherwise use X-axis
+            const xAxisAlignment = Math.max(Math.abs(xaxis[0]), Math.abs(xaxis[1]), Math.abs(xaxis[2]));
+            const zAxisAlignment = Math.max(Math.abs(zaxis[0]), Math.abs(zaxis[1]), Math.abs(zaxis[2]));
+            
+            let rotationAxis = zAxisAlignment > xAxisAlignment ? zaxis : xaxis;
+          
+          
+          // Normalize the rotation axis
+          const length = Math.sqrt(rotationAxis[0]*rotationAxis[0] + rotationAxis[1]*rotationAxis[1] + rotationAxis[2]*rotationAxis[2]);
           if (length > 0.001) {
-            return `${xaxis[0]/length} ${xaxis[1]/length} ${xaxis[2]/length}`;
+            return `${rotationAxis[0]/length} ${rotationAxis[1]/length} ${rotationAxis[2]/length}`;
           }
         }
       }

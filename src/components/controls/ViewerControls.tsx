@@ -63,9 +63,19 @@ export default function ViewerControls({
       clearScene();
       loadExampleRobot(example.name);
     } else if (example.fileType === "MJCF" && example.path) {
-      // Track selected MJCF example in the shared robot selection
-      setSelectedRobot(example.name);
-      loadPublicScene(example.path.replace("/mjcf/", ""));
+      // Check if this MJCF robot should be loaded via URDF viewer (e.g., Cassie Metal)
+      // These are MJCF robots that we want to convert to URDF and display in the URDF viewer
+      const urdfViewerMjcfRobots = ["Cassie Metal", "Shadow Hand"];
+      
+      if (urdfViewerMjcfRobots.includes(example.name)) {
+        // Clear MJCF scene and load via URDF viewer with conversion
+        clearScene();
+        loadExampleRobot(example.name);
+      } else {
+        // Track selected MJCF example in the shared robot selection and use MuJoCo viewer
+        setSelectedRobot(example.name);
+        loadPublicScene(example.path.replace("/mjcf/", ""));
+      }
     }
     onExampleLoad?.(example);
   };

@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { DM_Mono } from "next/font/google";
+import { MjcfToUrdfConverter } from "@/lib/mjcfToUrdfConverter";
 
 const dmMono = DM_Mono({ subsets: ["latin"], weight: "400" });
 
@@ -70,11 +71,13 @@ const UrdfViewer: React.FC = () => {
   // State to track if we have a dropped robot
   const [hasDroppedRobot, setHasDroppedRobot] = useState(false);
 
-  // Mapping from robot names to their URDF paths
-  const robotPathMap: Record<string, string> = {
-    Cassie: "/urdf/cassie/cassie.urdf",
-    "SO-100": "/urdf/so-100/so_100.urdf",
-    "Anymal B": "/urdf/anymal-b/anymal.urdf",
+  // Mapping from robot names to their paths and file types
+  const robotPathMap: Record<string, { path: string; type: 'URDF' | 'MJCF' }> = {
+    Cassie: { path: "/urdf/cassie/cassie.urdf", type: "URDF" },
+    "SO-100": { path: "/urdf/so-100/so_100.urdf", type: "URDF" },
+    "Anymal B": { path: "/urdf/anymal-b/anymal.urdf", type: "URDF" },
+    "Cassie Metal": { path: "/mjcf/cassie/cassie.xml", type: "MJCF" },
+    "Shadow Hand": { path: "/mjcf/shadow_hand/right_hand.xml", type: "MJCF" },
   };
 
   // Implement UrdfProcessor interface for drag and drop
@@ -131,22 +134,41 @@ const UrdfViewer: React.FC = () => {
       setupMeshLoader(viewer, urlModifierFunc);
 
       // Use selected robot or default to SO-100
-      const defaultUrdfPath = "/urdf/so-100/so_100.urdf";
-      const urdfPath =
+      const defaultRobotConfig = { path: "/urdf/so-100/so_100.urdf", type: "URDF" as const };
+      const robotConfig =
         selectedRobot && robotPathMap[selectedRobot]
           ? robotPathMap[selectedRobot]
-          : defaultUrdfPath;
+          : defaultRobotConfig;
 
-      // Setup model loading if a path is available
-      if (urdfPath) {
-        const cleanupModelLoading = setupModelLoading(
-          viewer,
-          urdfPath,
-          packageRef.current,
-          setCustomUrdfPath,
-          alternativeRobotModels
-        );
-        cleanupFunctions.push(cleanupModelLoading);
+      // Setup model loading if a robot is available
+      if (robotConfig) {
+        if (robotConfig.type === 'MJCF') {
+          // Handle MJCF files by converting to URDF first
+          const converter = new MjcfToUrdfConverter();
+          converter.convertFile(robotConfig.path).then(urdfContent => {
+            const blob = new Blob([urdfContent], { type: 'application/xml' });
+            const blobUrl = URL.createObjectURL(blob) + '#.urdf';
+            
+            // Setup mesh loader with MJCF URL modifier
+            setupMeshLoader(viewer, converter.createUrlModifier());
+            
+            // Load the converted URDF
+            viewer.setAttribute('urdf', blobUrl);
+            viewer.setAttribute('package', packageRef.current);
+          }).catch(error => {
+            console.error('Error converting MJCF to URDF:', error);
+          });
+        } else {
+          // Handle URDF files normally
+          const cleanupModelLoading = setupModelLoading(
+            viewer,
+            robotConfig.path,
+            packageRef.current,
+            setCustomUrdfPath,
+            alternativeRobotModels
+          );
+          cleanupFunctions.push(cleanupModelLoading);
+        }
       }
 
       // Setup joint highlighting
@@ -232,7 +254,7 @@ const UrdfViewer: React.FC = () => {
     if (!viewerRef.current || !selectedRobot || !robotPathMap[selectedRobot])
       return;
 
-    const urdfPath = robotPathMap[selectedRobot];
+    const robotConfig: { path: string; type: 'URDF' | 'MJCF' } = robotPathMap[selectedRobot];
 
     // Clear the current robot by removing the urdf attribute first
     viewerRef.current.removeAttribute("urdf");
@@ -240,9 +262,6 @@ const UrdfViewer: React.FC = () => {
     // Small delay to ensure the attribute is cleared
     setTimeout(() => {
       if (viewerRef.current) {
-        // Update the mesh loader first to ensure it's ready for the new URDF
-        setupMeshLoader(viewerRef.current, urlModifierFunc);
-
         // Add a one-time event listener to confirm the URDF is processed
         const onUrdfProcessed = () => {
           // Fit robot to view after it's loaded
@@ -258,12 +277,41 @@ const UrdfViewer: React.FC = () => {
 
         viewerRef.current.addEventListener("urdf-processed", onUrdfProcessed);
 
-        viewerRef.current.setAttribute("urdf", urdfPath);
-        viewerRef.current.setAttribute("package", packageRef.current);
+        if (robotConfig.type === 'MJCF') {
+          // Handle MJCF files by converting to URDF first
+          const converter = new MjcfToUrdfConverter();
+          converter.convertFile(robotConfig.path).then(urdfContent => {
+            if (viewerRef.current) {
+              const blob = new Blob([urdfContent], { type: 'application/xml' });
+              const blobUrl = URL.createObjectURL(blob) + '#.urdf';
+              
+              // Setup mesh loader with MJCF URL modifier
+              setupMeshLoader(viewerRef.current, converter.createUrlModifier());
+              
+              // Load the converted URDF
+              viewerRef.current.setAttribute("urdf", blobUrl);
+              viewerRef.current.setAttribute("package", packageRef.current);
 
-        // Force a redraw
-        if (viewerRef.current.redraw) {
-          viewerRef.current.redraw();
+              // Force a redraw
+              if (viewerRef.current.redraw) {
+                viewerRef.current.redraw();
+              }
+            }
+          }).catch(error => {
+            console.error('Error converting MJCF to URDF:', error);
+          });
+        } else {
+          // Handle URDF files normally
+          // Update the mesh loader first to ensure it's ready for the new URDF
+          setupMeshLoader(viewerRef.current, urlModifierFunc);
+
+          viewerRef.current.setAttribute("urdf", robotConfig.path);
+          viewerRef.current.setAttribute("package", packageRef.current);
+
+          // Force a redraw
+          if (viewerRef.current.redraw) {
+            viewerRef.current.redraw();
+          }
         }
       }
     }, 100);

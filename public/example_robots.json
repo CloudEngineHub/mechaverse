@@ -22,12 +22,12 @@
   {
     "name": "Cassie Metal",
     "fileType": "MJCF",
-    "path": "/mjcf/cassie/scene.xml"
+    "path": "/mjcf/cassie/cassie.xml"
   },
   {
     "name": "Shadow Hand",
     "fileType": "MJCF",
-    "path": "/mjcf/shadow_hand/scene_right.xml"
+    "path": "/mjcf/shadow_hand/right_hand.xml"
   },
   { "name": "TurtleBot3", "fileType": "SDF" },
   { "name": "PR2", "fileType": "SDF" },

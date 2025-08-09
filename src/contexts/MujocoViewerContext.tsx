@@ -9,6 +9,14 @@ type MujocoViewerContextType = {
   resetPose: () => void;
   setTransparentBackground: () => void;
   fitIsometric: () => void;
+  setTheme: (
+    theme: Partial<{
+      sceneBg: string;
+      floor: string;
+      ambient: string;
+      hemi: string;
+    }>
+  ) => void;
   currentScenePath?: string | null;
 };
 
@@ -95,6 +103,20 @@ export const MujocoViewerProvider: React.FC<{ children: React.ReactNode }> = ({
     post({ type: "FIT_ISO" });
   }, [post]);
 
+  const setTheme = useCallback(
+    (
+      theme: Partial<{
+        sceneBg: string;
+        floor: string;
+        ambient: string;
+        hemi: string;
+      }>
+    ) => {
+      post({ type: "SET_THEME", ...theme });
+    },
+    [post]
+  );
+
   return (
     <MujocoViewerContext.Provider
       value={{
@@ -104,6 +126,7 @@ export const MujocoViewerProvider: React.FC<{ children: React.ReactNode }> = ({
         resetPose,
         setTransparentBackground,
         fitIsometric,
+        setTheme,
         currentScenePath,
       }}
     >

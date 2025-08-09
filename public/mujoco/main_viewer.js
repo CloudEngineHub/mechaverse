@@ -6,7 +6,7 @@ import {
   loadSceneFromURL,
   getPosition,
   getQuaternion,
-} from "./mujocoUtils_render_only.js";
+} from "./mujocoUtils_viewer.js";
 import { JointDragManager } from "./utils/JointDragManager.js";
 import load_mujoco from "./wasm/mujoco_wasm.js";
 
@@ -55,15 +55,19 @@ export class MuJoCoViewer {
       100
     );
     this.camera.name = "PerspectiveCamera";
-    this.camera.position.set(2.0, 1.7, 1.7);
     this.scene.add(this.camera);
 
-    this.scene.background = new THREE.Color(0xfef4da);
-    this.scene.fog = new THREE.Fog(this.scene.background, 15, 25.5);
+    // Theme defaults; can be overridden by parent messages
+    this.theme = {
+      sceneBg: "#fef4da",
+      floor: "#fcf4dc",
+      ambient: "#fcf4dc",
+      hemi: "#fcf4dc",
+    };
+    this.scene.background = new THREE.Color(this.theme.sceneBg);
 
-    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.1);
-    this.ambientLight.name = "AmbientLight";
-    this.scene.add(this.ambientLight);
+    // Centralized fill lights
+    this._createFillLights();
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(window.devicePixelRatio);
@@ -75,18 +79,77 @@ export class MuJoCoViewer {
     this.container.appendChild(this.renderer.domElement);
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.target.set(0, 0.7, 0);
     this.controls.panSpeed = 2;
     this.controls.zoomSpeed = 1;
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.1;
     this.controls.screenSpacePanning = true;
-    this.controls.update();
+    this.setDefaultCamera();
 
     window.addEventListener("resize", this.onWindowResize.bind(this));
 
     // Initialize joint drag manager (will be set up after simulation is created)
     this.jointDragManager = null;
+  }
+
+  _createFillLights() {
+    if (this.ambientLight) this.scene.remove(this.ambientLight);
+    if (this.hemiLight) this.scene.remove(this.hemiLight);
+
+    this.ambientLight = new THREE.AmbientLight(
+      new THREE.Color(this.theme.ambient),
+      0.2
+    );
+    this.ambientLight.name = "AmbientLight";
+    this.scene.add(this.ambientLight);
+
+    this.hemiLight = new THREE.HemisphereLight(
+      new THREE.Color(this.theme.hemi),
+      new THREE.Color(this.theme.hemi),
+      0.1
+    );
+    this.hemiLight.position.set(0, 1, 0);
+    this.hemiLight.name = "HemisphereLight";
+    this.scene.add(this.hemiLight);
+  }
+
+  setDefaultCamera() {
+    this.camera.position.set(2.0, 1.7, 1.7);
+    this.controls.target.set(0, 0.7, 0);
+    this.controls.update();
+  }
+
+  _applyFloorTheme() {
+    const mujocoRoot = this.scene.getObjectByName("MuJoCo Root");
+    if (mujocoRoot) {
+      mujocoRoot.traverse((obj) => {
+        if (
+          obj.isMesh &&
+          obj.userData &&
+          obj.userData.isFloor &&
+          obj.material &&
+          obj.material.color
+        ) {
+          obj.material.color.set(this.theme.floor);
+          obj.material.map = null;
+          obj.material.reflectivity = 0;
+          obj.material.metalness = 0;
+          obj.material.needsUpdate = true;
+        }
+      });
+    }
+  }
+
+  applyTheme({ sceneBg, floor, ambient, hemi }) {
+    this.theme = {
+      sceneBg: sceneBg || this.theme.sceneBg,
+      floor: floor || this.theme.floor,
+      ambient: ambient || this.theme.ambient,
+      hemi: hemi || this.theme.hemi,
+    };
+    this.scene.background = new THREE.Color(this.theme.sceneBg);
+    this._createFillLights();
+    this._applyFloorTheme();
   }
 
   async init() {
@@ -99,34 +162,25 @@ export class MuJoCoViewer {
       [this.model, this.state, this.simulation, this.bodies, this.lights] =
         await loadSceneFromURL(mujoco, initialScene, this);
 
-      this.scene.background = new THREE.Color(0xfef4da);
+      this.scene.background = new THREE.Color(this.theme.sceneBg);
 
       // Change the color and material properties of the mesh floor after loading the scene
       // Find the MuJoCo Root group
       const mujocoRoot = this.scene.getObjectByName("MuJoCo Root");
-
       if (mujocoRoot) {
-        let meshCount = 0;
-        let floorModified = false;
-
         mujocoRoot.traverse((obj) => {
-          if (obj.isMesh) {
-            meshCount++;
-
-            // Check for Reflector (custom floor) or PlaneGeometry (fallback)
-            if (
-              obj.geometry?.type === "PlaneGeometry" ||
-              obj.constructor.name === "Reflector"
-            ) {
-              if (obj.material && obj.material.color) {
-                obj.material.color.set(0xdddddd); // Set to light gray
-                obj.material.map = null; // Remove checkerboard texture
-                obj.material.reflectivity = 0; // Matte
-                obj.material.metalness = 0; // Matte
-                obj.material.needsUpdate = true;
-                floorModified = true;
-              }
-            }
+          if (
+            obj.isMesh &&
+            obj.userData &&
+            obj.userData.isFloor &&
+            obj.material &&
+            obj.material.color
+          ) {
+            obj.material.color.set(this.theme.floor);
+            obj.material.map = null;
+            obj.material.reflectivity = 0;
+            obj.material.metalness = 0;
+            obj.material.needsUpdate = true;
           }
         });
       }
@@ -152,7 +206,7 @@ export class MuJoCoViewer {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
   }
 
-  render(timeMS) {
+  render() {
     this.controls.update();
 
     // Update body transforms from current simulation state
@@ -258,6 +312,44 @@ window.addEventListener("message", async (event) => {
 
   try {
     switch (event.data.type) {
+      case "SET_THEME": {
+        const { sceneBg, floor, ambient, hemi } = event.data || {};
+        if (viewer) {
+          viewer.theme = {
+            sceneBg: sceneBg || viewer.theme.sceneBg,
+            floor: floor || viewer.theme.floor,
+            ambient: ambient || viewer.theme.ambient,
+            hemi: hemi || viewer.theme.hemi,
+          };
+          // Apply immediately to scene and lights
+          if (viewer.scene) {
+            viewer.scene.background = new THREE.Color(viewer.theme.sceneBg);
+          }
+          if (viewer.ambientLight) {
+            viewer.ambientLight.color = new THREE.Color(viewer.theme.ambient);
+          }
+          if (viewer.hemiLight) {
+            viewer.hemiLight.color = new THREE.Color(viewer.theme.hemi);
+            viewer.hemiLight.groundColor = new THREE.Color(viewer.theme.hemi);
+          }
+          const mujocoRoot = viewer.scene.getObjectByName("MuJoCo Root");
+          if (mujocoRoot) {
+            mujocoRoot.traverse((obj) => {
+              if (
+                obj.isMesh &&
+                obj.userData &&
+                obj.userData.isFloor &&
+                obj.material &&
+                obj.material.color
+              ) {
+                obj.material.color.set(viewer.theme.floor);
+                obj.material.needsUpdate = true;
+              }
+            });
+          }
+        }
+        break;
+      }
       case "RESET_POSE":
         if (viewer?.simulation) {
           viewer.simulation.resetData();
@@ -353,7 +445,6 @@ window.addEventListener("message", async (event) => {
             const maxDim = Math.max(size.x, size.y, size.z);
             const radius = maxDim * 0.5;
 
-            const aspect = viewer.renderer.getSize(new THREE.Vector2());
             // Place camera along isometric direction
             const dir = new THREE.Vector3(1, 1, 1).normalize();
             const distance = radius * 2.6; // tuned factor for padding

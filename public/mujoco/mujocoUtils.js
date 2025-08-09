@@ -1,6 +1,5 @@
 import * as THREE from "three";
 import { Reflector } from "./utils/Reflector.js";
-import { MuJoCoDemo } from "./main.js";
 
 export async function reloadFunc() {
   // Delete the old scene and load the new scene

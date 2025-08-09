@@ -1,6 +1,6 @@
 "use client";
 
-import RobotViewer from "@/components/viewer/RobotViewer";
+import UrdfViewer from "@/components/viewer/UrdfViewer";
 import ViewerControls from "@/components/controls/ViewerControls";
 import FullScreenDragDrop from "@/components/FullScreenDragDrop";
 import { RobotProvider } from "@/contexts/RobotContext";
@@ -12,10 +12,8 @@ import Navbar from "@/components/misc/Navbar";
 
 export default function Home() {
   const [showFullScreenDragDrop, setShowFullScreenDragDrop] = useState(false);
-  const [selectedFileType, setSelectedFileType] = useState<FileType>("MJCF");
+  const [selectedFileType, setSelectedFileType] = useState<FileType>("URDF");
   const [useSimulation, setUseSimulation] = useState<boolean>(false);
-
-  const switchToMjcf = () => setSelectedFileType("MJCF");
 
   return (
     <div className="w-full h-screen flex flex-col">
@@ -43,7 +41,7 @@ export default function Home() {
                 {selectedFileType === "MJCF" ? (
                   <MujocoViewer useSimulation={useSimulation} />
                 ) : (
-                  <RobotViewer />
+                  <UrdfViewer />
                 )}
               </div>
             </div>
@@ -54,7 +52,7 @@ export default function Home() {
             <div className="absolute inset-0">
               <FullScreenDragDrop
                 onClose={() => setShowFullScreenDragDrop(false)}
-                onSwitchToMjcf={switchToMjcf}
+                onSwitchToMjcf={() => setSelectedFileType("MJCF")}
               />
             </div>
           )}

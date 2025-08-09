@@ -28,6 +28,8 @@ export interface URDFViewerElement extends HTMLElement {
   redraw: () => void;
   up: string;
   scene: Scene;
+  // Optional background property supported by the web component used in URDF mode
+  background?: string;
 }
 
 /**
@@ -47,7 +49,7 @@ export function createUrdfViewer(container: HTMLDivElement): URDFViewerElement {
   // Hint transparent background for captures
   try {
     // Attribute supported by urdf-manipulator to set bg
-    (viewer as any).background = "transparent";
+    viewer.background = "transparent";
     viewer.setAttribute("background", "transparent");
   } catch {}
   setViewerColor(viewer, "#eff4ff");
@@ -55,7 +57,7 @@ export function createUrdfViewer(container: HTMLDivElement): URDFViewerElement {
   viewer.setAttribute("auto-redraw", "true");
 
   // Add ambient light to the scene
-  const ambientLight = new AmbientLight(0xd6d6d6, 1); // Increased intensity to 0.4
+  const ambientLight = new AmbientLight(0xd6d6d6, 1);
   viewer.scene.add(ambientLight);
 
   // Add directional light for better shadows and depth

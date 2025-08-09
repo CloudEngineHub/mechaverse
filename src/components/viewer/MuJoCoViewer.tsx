@@ -9,7 +9,7 @@ export default function MujocoViewer({
   useSimulation?: boolean;
 }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const { registerIframeWindow, resetPose } = useMujocoViewer();
+  const { registerIframeWindow, resetPose, setTheme } = useMujocoViewer();
 
   useEffect(() => {
     const iframe = iframeRef.current;
@@ -42,6 +42,11 @@ export default function MujocoViewer({
       if (event.source !== iframe.contentWindow) return;
       if (event.data?.type === "IFRAME_READY") {
         registerIframeWindow(iframe.contentWindow);
+        // Push CSS variable-based theme to iframe once ready
+        const styles = getComputedStyle(document.documentElement);
+        const sceneBg = styles.getPropertyValue("--mv-scene-bg").trim();
+        const floor = styles.getPropertyValue("--mv-floor").trim();
+        setTheme({ sceneBg, floor, ambient: floor, hemi: floor });
       }
     };
 
@@ -72,7 +77,7 @@ export default function MujocoViewer({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#fef4da",
+          background: "var(--mv-scene-bg)",
           boxShadow: "2px 0 8px rgba(0,0,0,0.04)",
           position: "relative",
           zIndex: 1,
@@ -82,11 +87,10 @@ export default function MujocoViewer({
           ref={iframeRef}
           src={
             useSimulation
-              ? "/mujoco-sim/mujoco-demo-sim.html"
-              : "/mujoco-sim/mujoco-demo.html"
+              ? "/mujoco/mujoco-simulator.html"
+              : "/mujoco/mujoco-viewer.html"
           }
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads"
-          allow="accelerometer; camera; encrypted-media; geolocation; gyroscope; microphone; midi; clipboard-read; clipboard-write"
           style={{
             width: "100%",
             height: "100%",
@@ -94,7 +98,7 @@ export default function MujocoViewer({
             padding: 0,
             border: "none",
             display: "block",
-            background: "#fef4da",
+            background: "var(--mv-scene-bg)",
             borderRadius: "12px",
           }}
           title="MuJoCo Physics Viewer"
@@ -102,44 +106,13 @@ export default function MujocoViewer({
           referrerPolicy="no-referrer"
         />
 
-        {/* <button
+        <button
           onClick={resetPose}
           aria-label="Reset Pose"
-          style={{
-            position: "absolute",
-            top: 12,
-            right: 12,
-            zIndex: 10,
-            background: "#f60002",
-            border: "none",
-            borderRadius: 12,
-            padding: 10,
-            boxShadow: "0 4px 15px rgba(102, 126, 234, 0.3)",
-            cursor: "pointer",
-            transition: "all 0.3s ease",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "scale(1.1)";
-            e.currentTarget.style.boxShadow =
-              "0 6px 20px rgba(102, 126, 234, 0.4)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "scale(1)";
-            e.currentTarget.style.boxShadow =
-              "0 4px 15px rgba(102, 126, 234, 0.3)";
-          }}
+          className="absolute top-3 right-3 z-10 bg-[#fefbf1] border-none rounded-lg p-2 cursor-pointer hover:bg-[#fefbf1]/80 transition-all"
         >
-          <RotateCcw
-            size={22}
-            color="white"
-            style={{
-              filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.1))",
-            }}
-          />
-        </button> */}
+          <RotateCcw size={22} className="text-[#968612]" />
+        </button>
       </div>
     </div>
   );

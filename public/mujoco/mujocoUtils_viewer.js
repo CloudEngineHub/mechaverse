@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { Reflector } from "./utils/Reflector.js";
 
 export async function reloadFunc() {
   // Delete the old scene and load the new scene
@@ -22,11 +21,11 @@ export async function reloadFunc() {
 export function setupGUI(parentContext) {
   // Make sure we reset the camera when the scene is changed or reloaded.
   parentContext.updateGUICallbacks.length = 0;
-  parentContext.updateGUICallbacks.push((model, simulation, params) => {
-    // TODO: Use free camera parameters from MuJoCo
-    parentContext.camera.position.set(2.0, 1.7, 1.7);
-    parentContext.controls.target.set(0, 0.7, 0);
-    parentContext.controls.update();
+  parentContext.updateGUICallbacks.push(() => {
+    // Use centralized helper on the viewer
+    if (typeof parentContext.setDefaultCamera === "function") {
+      parentContext.setDefaultCamera();
+    }
   });
 
   // Add scene selection dropdown.
@@ -179,7 +178,7 @@ export function setupGUI(parentContext) {
       }
     });
   }
-  parentContext.updateGUICallbacks.push((model, simulation, params) => {
+  parentContext.updateGUICallbacks.push(() => {
     let nkeys = parentContext.model.nkey;
     if (nkeys > 0) {
       keyframeGUI.max(nkeys - 1);
@@ -195,10 +194,9 @@ export function setupGUI(parentContext) {
   // Can be triggered by pressing ctrl + A.
   document.addEventListener("keydown", (event) => {
     if (event.ctrlKey && event.code === "KeyA") {
-      // TODO: Use free camera parameters from MuJoCo
-      parentContext.camera.position.set(2.0, 1.7, 1.7);
-      parentContext.controls.target.set(0, 0.7, 0);
-      parentContext.controls.update();
+      if (typeof parentContext.setDefaultCamera === "function") {
+        parentContext.setDefaultCamera();
+      }
       event.preventDefault();
     }
   });
@@ -481,11 +479,19 @@ export async function loadSceneFromURL(mujoco, filename, parent) {
 
     let mesh = new THREE.Mesh();
     if (type == 0) {
-      mesh = new Reflector(new THREE.PlaneGeometry(100, 100), {
-        clipBias: 0.003,
-        texture: texture,
+      // Ground plane: create a matte material colored by parent theme (fallback to default)
+      const floorHex =
+        (parent && parent.theme && parent.theme.floor) || "#fcf4dc";
+      const matteMaterial = new THREE.MeshPhysicalMaterial({
+        color: new THREE.Color(floorHex),
+        reflectivity: 0,
+        metalness: 0,
+        roughness: 1,
+        map: undefined,
       });
+      mesh = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), matteMaterial);
       mesh.rotateX(-Math.PI / 2);
+      mesh.userData.isFloor = true;
     } else {
       mesh = new THREE.Mesh(geometry, material);
     }

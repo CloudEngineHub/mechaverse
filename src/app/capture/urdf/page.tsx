@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import RobotViewer from "@/components/viewer/RobotViewer";
+import UrdfViewer from "@/components/viewer/UrdfViewer";
 import { RobotProvider } from "@/contexts/RobotContext";
 import { useRobot } from "@/hooks/useRobot";
 
@@ -60,7 +60,7 @@ function Inner() {
       ref={containerRef}
       style={{ width: "100vw", height: "100vh", background: "transparent" }}
     >
-      <RobotViewer />
+      <UrdfViewer />
     </div>
   );
 }

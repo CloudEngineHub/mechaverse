@@ -3,6 +3,9 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Mechaverse viewer theme tokens */
+  --mv-scene-bg: #fef4da; /* outer app + three.js scene background */
+  --mv-floor: #fcf4dc;    /* floor/ground plane color inside MuJoCo scene */
 }
 
 @theme inline {
@@ -18,6 +21,7 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    /* keep light-toned viewer tokens unless you add a dark theme later */
   }
 }
 

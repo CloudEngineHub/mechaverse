@@ -17,7 +17,7 @@ import load_mujoco from "./wasm/mujoco_wasm.js";
 // Load the MuJoCo Module
 const mujoco = await load_mujoco();
 
-// Set up Emscripten's Virtual File System and also mirror the asset prefetch from main_render_only.js
+// Set up Emscripten's Virtual File System and also mirror the asset prefetch from main_viewer.js
 let initialScene = "humanoid.xml";
 mujoco.FS.mkdir("/working");
 mujoco.FS.mount(mujoco.MEMFS, { root: "." }, "/working");
@@ -65,11 +65,16 @@ export class MuJoCoDemoWithAssets {
     this.scene.add(this.camera);
 
     this.scene.background = new THREE.Color(0xeeeeee);
-    this.scene.fog = new THREE.Fog(this.scene.background, 15, 25.5);
 
-    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.1);
+    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.35);
     this.ambientLight.name = "AmbientLight";
     this.scene.add(this.ambientLight);
+
+    // Uniform hemisphere fill light
+    this.hemiLight = new THREE.HemisphereLight(0xe8f0ff, 0xf2e8d0, 0.3);
+    this.hemiLight.position.set(0, 1, 0);
+    this.hemiLight.name = "HemisphereLight";
+    this.scene.add(this.hemiLight);
 
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -108,7 +113,7 @@ export class MuJoCoDemoWithAssets {
 
   async init() {
     try {
-      // Download the examples and public mjcf assets like main_render_only does
+      // Download the examples and public mjcf assets like main_viewer.js does
       await downloadExampleScenesFolder(mujoco);
       await downloadMjcfExamplesFolder(mujoco);
 
@@ -274,7 +279,7 @@ export class MuJoCoDemoWithAssets {
 let demo = new MuJoCoDemoWithAssets();
 await demo.init();
 
-// Mirror the public/mjcf asset prefetch and helpers from main_render_only.js
+// Mirror the public/mjcf asset prefetch and helpers from main_viewer.js
 async function downloadMjcfExamplesFolder(mujoco) {
   const files = [
     "humanoid/humanoid.xml",
@@ -339,7 +344,7 @@ async function downloadMjcfExamplesFolder(mujoco) {
 // Notify parent when ready (to match render_only)
 window.parent.postMessage({ type: "IFRAME_READY" }, "*");
 
-// Handle messages similar to main_render_only with load public scene and reset
+// Handle messages similar to main_viewer.js with load public scene and reset
 window.addEventListener("message", async (event) => {
   // Received message from parent (sim)
   try {

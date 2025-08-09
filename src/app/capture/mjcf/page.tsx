@@ -61,7 +61,7 @@ export default function CaptureMJCF() {
     <div style={{ width: "100vw", height: "100vh", background: "transparent" }}>
       <iframe
         ref={iframeRef}
-        src="/mujoco-sim/mujoco-demo.html"
+        src="/mujoco/mujoco-viewer.html"
         style={{
           width: "100%",
           height: "100%",

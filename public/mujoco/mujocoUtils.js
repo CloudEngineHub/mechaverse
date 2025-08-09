@@ -1,22 +1,22 @@
 import * as THREE from "three";
-import { Reflector } from "./utils/Reflector.js";
 
 export async function reloadFunc() {
   // Delete the old scene and load the new scene
   this.scene.remove(this.scene.getObjectByName("MuJoCo Root"));
   [this.model, this.state, this.simulation, this.bodies, this.lights] =
     await loadSceneFromURL(this.mujoco, this.params.scene, this);
+
   this.simulation.forward();
   for (let i = 0; i < this.updateGUICallbacks.length; i++) {
     this.updateGUICallbacks[i](this.model, this.simulation, this.params);
   }
 }
 
-/** @param {MuJoCoDemo} parentContext*/
+/** @param {MujocoSimulator} parentContext*/
 export function setupGUI(parentContext) {
   // Make sure we reset the camera when the scene is changed or reloaded.
   parentContext.updateGUICallbacks.length = 0;
-  parentContext.updateGUICallbacks.push((model, simulation, params) => {
+  parentContext.updateGUICallbacks.push(() => {
     // TODO: Use free camera parameters from MuJoCo
     parentContext.camera.position.set(2.0, 1.7, 1.7);
     parentContext.controls.target.set(0, 0.7, 0);
@@ -38,99 +38,6 @@ export function setupGUI(parentContext) {
     })
     .name("Example Scene")
     .onChange(reload);
-
-  // Add a help menu.
-  // Parameters:
-  //  Name: "Help".
-  //  When pressed, a help menu is displayed in the top left corner. When pressed again
-  //  the help menu is removed.
-  //  Can also be triggered by pressing F1.
-  // Has a dark transparent background.
-  // Has two columns: one for putting the action description, and one for the action key trigger.keyframeNumber
-  let keyInnerHTML = "";
-  let actionInnerHTML = "";
-  const displayHelpMenu = () => {
-    if (parentContext.params.help) {
-      const helpMenu = document.createElement("div");
-      helpMenu.style.position = "absolute";
-      helpMenu.style.top = "10px";
-      helpMenu.style.left = "10px";
-      helpMenu.style.color = "white";
-      helpMenu.style.font = "normal 18px Arial";
-      helpMenu.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-      helpMenu.style.padding = "10px";
-      helpMenu.style.borderRadius = "10px";
-      helpMenu.style.display = "flex";
-      helpMenu.style.flexDirection = "column";
-      helpMenu.style.alignItems = "center";
-      helpMenu.style.justifyContent = "center";
-      helpMenu.style.width = "400px";
-      helpMenu.style.height = "400px";
-      helpMenu.style.overflow = "auto";
-      helpMenu.style.zIndex = "1000";
-
-      const helpMenuTitle = document.createElement("div");
-      helpMenuTitle.style.font = "bold 24px Arial";
-      helpMenuTitle.innerHTML = "";
-      helpMenu.appendChild(helpMenuTitle);
-
-      const helpMenuTable = document.createElement("table");
-      helpMenuTable.style.width = "100%";
-      helpMenuTable.style.marginTop = "10px";
-      helpMenu.appendChild(helpMenuTable);
-
-      const helpMenuTableBody = document.createElement("tbody");
-      helpMenuTable.appendChild(helpMenuTableBody);
-
-      const helpMenuRow = document.createElement("tr");
-      helpMenuTableBody.appendChild(helpMenuRow);
-
-      const helpMenuActionColumn = document.createElement("td");
-      helpMenuActionColumn.style.width = "50%";
-      helpMenuActionColumn.style.textAlign = "right";
-      helpMenuActionColumn.style.paddingRight = "10px";
-      helpMenuRow.appendChild(helpMenuActionColumn);
-
-      const helpMenuKeyColumn = document.createElement("td");
-      helpMenuKeyColumn.style.width = "50%";
-      helpMenuKeyColumn.style.textAlign = "left";
-      helpMenuKeyColumn.style.paddingLeft = "10px";
-      helpMenuRow.appendChild(helpMenuKeyColumn);
-
-      const helpMenuActionText = document.createElement("div");
-      helpMenuActionText.innerHTML = actionInnerHTML;
-      helpMenuActionColumn.appendChild(helpMenuActionText);
-
-      const helpMenuKeyText = document.createElement("div");
-      helpMenuKeyText.innerHTML = keyInnerHTML;
-      helpMenuKeyColumn.appendChild(helpMenuKeyText);
-
-      // Close buttom in the top.
-      const helpMenuCloseButton = document.createElement("button");
-      helpMenuCloseButton.innerHTML = "Close";
-      helpMenuCloseButton.style.position = "absolute";
-      helpMenuCloseButton.style.top = "10px";
-      helpMenuCloseButton.style.right = "10px";
-      helpMenuCloseButton.style.zIndex = "1001";
-      helpMenuCloseButton.onclick = () => {
-        helpMenu.remove();
-      };
-      helpMenu.appendChild(helpMenuCloseButton);
-
-      document.body.appendChild(helpMenu);
-    } else {
-      document.body.removeChild(document.body.lastChild);
-    }
-  };
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "F1") {
-      parentContext.params.help = !parentContext.params.help;
-      displayHelpMenu();
-      event.preventDefault();
-    }
-  });
-  keyInnerHTML += "F1<br>";
-  actionInnerHTML += "Help<br>";
 
   let simulationFolder = parentContext.gui.addFolder("Simulation");
 
@@ -237,7 +144,7 @@ export function setupGUI(parentContext) {
       );
     }
   });
-  parentContext.updateGUICallbacks.push((model, simulation, params) => {
+  parentContext.updateGUICallbacks.push(() => {
     let nkeys = parentContext.model.nkey;
     if (nkeys > 0) {
       keyframeGUI.max(nkeys - 1);
@@ -262,7 +169,7 @@ export function setupGUI(parentContext) {
 
   // Add actuator sliders.
   let actuatorFolder = simulationFolder.addFolder("Actuators");
-  const addActuators = (model, simulation, params) => {
+  const addActuators = (model, simulation) => {
     let act_range = model.actuator_ctrlrange;
     let actuatorGUIs = [];
     for (let i = 0; i < model.nu; i++) {
@@ -300,7 +207,7 @@ export function setupGUI(parentContext) {
     parentContext.simulation,
     parentContext.params
   );
-  parentContext.updateGUICallbacks.push((model, simulation, params) => {
+  parentContext.updateGUICallbacks.push((model, simulation) => {
     for (let i = 0; i < actuatorGUIs.length; i++) {
       actuatorGUIs[i].destroy();
     }
@@ -328,7 +235,7 @@ export function setupGUI(parentContext) {
 /** Loads a scene for MuJoCo
  * @param {mujoco} mujoco This is a reference to the mujoco namespace object
  * @param {string} filename This is the name of the .xml file in the /working/ directory of the MuJoCo/Emscripten Virtual File System
- * @param {MuJoCoDemo} parent The three.js Scene Object to add the MuJoCo model elements to
+ * @param {MujocoSimulator} parent The three.js Scene Object to add the MuJoCo model elements to
  */
 export async function loadSceneFromURL(mujoco, filename, parent) {
   // Free the old simulation.
@@ -560,11 +467,19 @@ export async function loadSceneFromURL(mujoco, filename, parent) {
 
     let mesh = new THREE.Mesh();
     if (type == 0) {
-      mesh = new Reflector(new THREE.PlaneGeometry(100, 100), {
-        clipBias: 0.003,
-        texture: texture,
+      // Ground plane: create a matte material colored by parent theme (fallback to default)
+      const floorHex =
+        (parent && parent.theme && parent.theme.floor) || "#fcf4dc";
+      const matteMaterial = new THREE.MeshPhysicalMaterial({
+        color: new THREE.Color(floorHex),
+        reflectivity: 0,
+        metalness: 0,
+        roughness: 1,
+        map: undefined,
       });
+      mesh = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), matteMaterial);
       mesh.rotateX(-Math.PI / 2);
+      mesh.userData.isFloor = true;
     } else {
       mesh = new THREE.Mesh(geometry, material);
     }
@@ -651,87 +566,119 @@ export async function loadSceneFromURL(mujoco, filename, parent) {
   return [model, state, simulation, bodies, lights];
 }
 
-/** Downloads the scenes/examples folder to MuJoCo's virtual filesystem
- * @param {mujoco} mujoco */
-export async function downloadExampleScenesFolder(mujoco) {
-  let allFiles = [
-    "22_humanoids.xml",
-    "adhesion.xml",
-    "agility_cassie/assets/achilles-rod.obj",
-    "agility_cassie/assets/cassie-texture.png",
-    "agility_cassie/assets/foot-crank.obj",
-    "agility_cassie/assets/foot.obj",
-    "agility_cassie/assets/heel-spring.obj",
-    "agility_cassie/assets/hip-pitch.obj",
-    "agility_cassie/assets/hip-roll.obj",
-    "agility_cassie/assets/hip-yaw.obj",
-    "agility_cassie/assets/knee-spring.obj",
-    "agility_cassie/assets/knee.obj",
-    "agility_cassie/assets/pelvis.obj",
-    "agility_cassie/assets/plantar-rod.obj",
-    "agility_cassie/assets/shin.obj",
-    "agility_cassie/assets/tarsus.obj",
-    "agility_cassie/cassie.xml",
-    "agility_cassie/scene.xml",
-    "arm26.xml",
-    "balloons.xml",
-    "flag.xml",
-    "hammock.xml",
-    "humanoid.xml",
-    "humanoid_body.xml",
-    "mug.obj",
-    "mug.png",
-    "mug.xml",
-    "scene.xml",
-    "shadow_hand/assets/f_distal_pst.obj",
-    "shadow_hand/assets/f_knuckle.obj",
-    "shadow_hand/assets/f_middle.obj",
-    "shadow_hand/assets/f_proximal.obj",
-    "shadow_hand/assets/forearm_0.obj",
-    "shadow_hand/assets/forearm_1.obj",
-    "shadow_hand/assets/forearm_collision.obj",
-    "shadow_hand/assets/lf_metacarpal.obj",
-    "shadow_hand/assets/mounting_plate.obj",
-    "shadow_hand/assets/palm.obj",
-    "shadow_hand/assets/th_distal_pst.obj",
-    "shadow_hand/assets/th_middle.obj",
-    "shadow_hand/assets/th_proximal.obj",
-    "shadow_hand/assets/wrist.obj",
-    "shadow_hand/left_hand.xml",
-    "shadow_hand/right_hand.xml",
-    "shadow_hand/scene_left.xml",
-    "shadow_hand/scene_right.xml",
-    "simple.xml",
-    "slider_crank.xml",
-    "model_with_tendon.xml",
-  ];
-
-  let requests = allFiles.map((url) => fetch("./examples/" + url));
-  let responses = await Promise.all(requests);
-  for (let i = 0; i < responses.length; i++) {
-    let split = allFiles[i].split("/");
-    let working = "/working/";
-    for (let f = 0; f < split.length - 1; f++) {
-      working += split[f];
-      if (!mujoco.FS.analyzePath(working).exists) {
-        mujoco.FS.mkdir(working);
-      }
-      working += "/";
-    }
-
-    if (
-      allFiles[i].endsWith(".png") ||
-      allFiles[i].endsWith(".stl") ||
-      allFiles[i].endsWith(".skn")
-    ) {
-      mujoco.FS.writeFile(
-        "/working/" + allFiles[i],
-        new Uint8Array(await responses[i].arrayBuffer())
-      );
-    } else {
-      mujoco.FS.writeFile("/working/" + allFiles[i], await responses[i].text());
+/** Ensure a specific public MJCF XML path and its dependencies are present in MuJoCo's VFS.
+ * Fetches only what's needed on-demand (no prefetch of entire folders).
+ * - Supports recursive <include file="..."/>
+ * - Fetches assets referenced via <asset> elements (e.g., <mesh file=...>, <texture file=...>)
+ */
+export async function ensureMjcfPathWithDependencies(mujoco, path) {
+  const basePrefix = "../mjcf/";
+  async function ensureDir(fullPath) {
+    const parts = fullPath.split("/");
+    let acc = "";
+    for (let i = 0; i < parts.length - 1; i++) {
+      acc += (i === 0 ? "" : "/") + parts[i];
+      if (!mujoco.FS.analyzePath(acc).exists) mujoco.FS.mkdir(acc);
     }
   }
+
+  async function writeBinary(fullPath, data) {
+    await ensureDir(fullPath);
+    mujoco.FS.writeFile(fullPath, new Uint8Array(await data.arrayBuffer()));
+  }
+
+  async function writeText(fullPath, text) {
+    await ensureDir(fullPath);
+    mujoco.FS.writeFile(fullPath, text);
+  }
+
+  const visited = new Set();
+
+  async function loadXmlRecursive(relPath) {
+    const vfsPath = "/working/" + relPath;
+    if (visited.has(relPath)) return;
+    visited.add(relPath);
+    if (!mujoco.FS.analyzePath(vfsPath).exists) {
+      const res = await fetch(basePrefix + relPath, { cache: "no-store" });
+      if (!res.ok) throw new Error("Failed to fetch " + relPath);
+      await writeText(vfsPath, await res.text());
+    }
+
+    // Parse and find dependencies
+    const xmlText = mujoco.FS.readFile(vfsPath, { encoding: "utf8" });
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xmlText, "application/xml");
+
+    // Resolve <include file="..."/>
+    const includes = Array.from(doc.querySelectorAll("include[file]"));
+    for (const inc of includes) {
+      const file = inc.getAttribute("file");
+      if (!file) continue;
+      const includePath = joinRelative(relPath, file);
+      await loadXmlRecursive(includePath);
+    }
+
+    // Resolve <asset> file references (mesh, texture, hfield, skin)
+    const assetFileSelectors = [
+      "mesh[file]",
+      "texture[file]",
+      "hfield[file]",
+      "skin[file]",
+    ];
+    for (const sel of assetFileSelectors) {
+      const nodes = Array.from(doc.querySelectorAll(sel));
+      for (const n of nodes) {
+        const file = n.getAttribute("file");
+        if (!file) continue;
+        const assetRel = joinRelative(relPath, "assets/" + file);
+        const fullVfs = "/working/" + assetRel;
+        if (!mujoco.FS.analyzePath(fullVfs).exists) {
+          const url = basePrefix + assetRel;
+          const r = await fetch(url, { cache: "no-store" });
+          if (!r.ok) throw new Error("Failed to fetch asset " + assetRel);
+          const lower = assetRel.toLowerCase();
+          if (
+            lower.endsWith(".png") ||
+            lower.endsWith(".jpg") ||
+            lower.endsWith(".jpeg") ||
+            lower.endsWith(".obj") ||
+            lower.endsWith(".stl") ||
+            lower.endsWith(".skn")
+          ) {
+            await writeBinary(fullVfs, r);
+          } else {
+            await writeText(fullVfs, await r.text());
+          }
+        }
+      }
+    }
+  }
+
+  // Helper to resolve relative paths based on current XML file location
+  function joinRelative(currentRelPath, relative) {
+    if (
+      relative.startsWith("/") ||
+      relative.startsWith("./") ||
+      relative.startsWith("../")
+    ) {
+      const baseParts = currentRelPath.split("/");
+      baseParts.pop();
+      const relParts = relative.split("/");
+      const stack = baseParts;
+      for (const part of relParts) {
+        if (part === "." || part === "") continue;
+        if (part === "..") stack.pop();
+        else stack.push(part);
+      }
+      return stack.join("/");
+    }
+    // simple same-folder reference
+    const baseParts = currentRelPath.split("/");
+    baseParts.pop();
+    return [...baseParts, relative].join("/");
+  }
+
+  await loadXmlRecursive(path);
 }
 
 /** Access the vector at index, swizzle for three.js, and apply to the target THREE.Vector3

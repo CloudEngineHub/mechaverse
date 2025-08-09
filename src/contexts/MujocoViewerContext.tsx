@@ -2,10 +2,25 @@
 
 import React, { createContext, useCallback, useContext, useRef } from "react";
 
+type MujocoMessage =
+  | { type: "LOAD_PUBLIC_SCENE"; path: string }
+  | { type: "LOAD_XML_CONTENT"; fileName: string; content: string }
+  | { type: "RESET_POSE" }
+  | { type: "SET_TRANSPARENT_BACKGROUND" }
+  | { type: "FIT_ISO" }
+  | {
+      type: "SET_THEME";
+      sceneBg?: string;
+      floor?: string;
+      ambient?: string;
+      hemi?: string;
+    };
+
 type MujocoViewerContextType = {
   registerIframeWindow: (win: Window | null) => void;
   loadPublicScene: (path: string) => void;
   loadXmlContent: (fileName: string, content: string) => void;
+  clearScene: () => void;
   resetPose: () => void;
   setTransparentBackground: () => void;
   fitIsometric: () => void;
@@ -34,7 +49,7 @@ export const MujocoViewerProvider: React.FC<{ children: React.ReactNode }> = ({
     null
   );
 
-  const post = useCallback((data: any) => {
+  const post = useCallback((data: MujocoMessage) => {
     const target = iframeWindowRef.current;
     if (!target) return;
     try {
@@ -91,6 +106,12 @@ export const MujocoViewerProvider: React.FC<{ children: React.ReactNode }> = ({
     [post]
   );
 
+  const clearScene = useCallback(() => {
+    setCurrentScenePath(null);
+    // Optionally notify iframe to clear scene if it supports it in the future
+    // post({ type: "CLEAR_SCENE" });
+  }, []);
+
   const resetPose = useCallback(() => {
     post({ type: "RESET_POSE" });
   }, [post]);
@@ -123,6 +144,7 @@ export const MujocoViewerProvider: React.FC<{ children: React.ReactNode }> = ({
         registerIframeWindow,
         loadPublicScene,
         loadXmlContent,
+        clearScene,
         resetPose,
         setTransparentBackground,
         fitIsometric,

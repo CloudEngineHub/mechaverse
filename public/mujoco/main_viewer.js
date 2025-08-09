@@ -2,40 +2,31 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 import {
-  downloadExampleScenesFolder,
   loadSceneFromURL,
   getPosition,
   getQuaternion,
-} from "./mujocoUtils_viewer.js";
+  ensureMjcfPathWithDependencies,
+} from "./mujocoUtils.js";
 import { JointDragManager } from "./utils/JointDragManager.js";
 import load_mujoco from "./wasm/mujoco_wasm.js";
 
 // Load the MuJoCo Module
 const mujoco = await load_mujoco();
 
-// Set up Emscripten's Virtual File System
-var initialScene = "humanoid.xml";
+// Set up Emscripten's Virtual File System (no prefetch)
 mujoco.FS.mkdir("/working");
 mujoco.FS.mount(mujoco.MEMFS, { root: "." }, "/working");
-mujoco.FS.writeFile(
-  "/working/" + initialScene,
-  await (await fetch("./examples/" + initialScene)).text()
-);
 
-export class MuJoCoViewer {
+export class MujocoViewer {
   constructor() {
     this.mujoco = mujoco;
-    // Load in the state from XML
-    this.model = new mujoco.Model("/working/" + initialScene);
-    this.state = new mujoco.State(this.model);
-    this.simulation = new mujoco.Simulation(this.model, this.state);
+    // Defer model/state/simulation until a scene is provided
+    this.model = null;
+    this.state = null;
+    this.simulation = null;
 
     // Define parameters (simplified for render-only)
-    this.params = {
-      scene: initialScene,
-      help: false,
-      keyframeNumber: 0,
-    };
+    this.params = { scene: null, help: false, keyframeNumber: 0 };
     this.bodies = {};
     this.lights = {};
     this.tmpVec = new THREE.Vector3();
@@ -154,13 +145,7 @@ export class MuJoCoViewer {
 
   async init() {
     try {
-      // Download the examples to MuJoCo's virtual file system
-      await downloadExampleScenesFolder(mujoco);
-      await downloadMjcfExamplesFolder(mujoco);
-
-      // Initialize the three.js Scene using the .xml Model in initialScene
-      [this.model, this.state, this.simulation, this.bodies, this.lights] =
-        await loadSceneFromURL(mujoco, initialScene, this);
+      // No-op here; initial scene will be provided by parent via message
 
       this.scene.background = new THREE.Color(this.theme.sceneBg);
 
@@ -185,15 +170,8 @@ export class MuJoCoViewer {
         });
       }
 
-      // Initialize joint drag manager after simulation is set up
-      this.jointDragManager = new JointDragManager(
-        this.scene,
-        this.renderer,
-        this.camera,
-        this.container,
-        this.controls,
-        this.simulation
-      );
+      // Joint drag manager will be initialized once simulation is created
+      this.jointDragManager = null;
     } catch (error) {
       console.error("❌ Error in init() method:", error);
       console.error("Stack trace:", error.stack);
@@ -208,6 +186,12 @@ export class MuJoCoViewer {
 
   render() {
     this.controls.update();
+
+    if (!this.model || !this.simulation) {
+      // Nothing loaded yet; still render background/empty scene
+      this.renderer.render(this.scene, this.camera);
+      return;
+    }
 
     // Update body transforms from current simulation state
     for (let b = 0; b < this.model.nbody; b++) {
@@ -301,7 +285,7 @@ export class MuJoCoViewer {
   }
 }
 
-let viewer = new MuJoCoViewer();
+let viewer = new MujocoViewer();
 await viewer.init();
 // Signal readiness to the parent so it can send initial scene messages safely
 window.parent.postMessage({ type: "IFRAME_READY" }, "*");
@@ -389,10 +373,10 @@ window.addEventListener("message", async (event) => {
         );
         break;
 
-      case "LOAD_PUBLIC_SCENE":
-        // Load MJCF from public/mjcf
+      case "LOAD_PUBLIC_SCENE": {
+        // Load MJCF from public/mjcf on demand with dependencies
         removeAllMujocoRoots(viewer);
-        await ensureMjcfInVFS(mujoco, event.data.path);
+        await ensureMjcfPathWithDependencies(mujoco, event.data.path);
         [
           viewer.model,
           viewer.state,
@@ -401,7 +385,16 @@ window.addEventListener("message", async (event) => {
           viewer.lights,
         ] = await loadSceneFromURL(mujoco, event.data.path, viewer);
 
-        if (viewer.jointDragManager) {
+        if (!viewer.jointDragManager && viewer.simulation) {
+          viewer.jointDragManager = new JointDragManager(
+            viewer.scene,
+            viewer.renderer,
+            viewer.camera,
+            viewer.container,
+            viewer.controls,
+            viewer.simulation
+          );
+        } else if (viewer.jointDragManager) {
           viewer.jointDragManager.simulation = viewer.simulation;
         }
         viewer.simulation.resetData();
@@ -415,6 +408,7 @@ window.addEventListener("message", async (event) => {
           "*"
         );
         break;
+      }
 
       case "SET_TRANSPARENT_BACKGROUND": {
         try {
@@ -526,78 +520,7 @@ window.addEventListener("message", async (event) => {
   }
 });
 
-// Prefetch and mount files from public/mjcf into the VFS so relative asset paths work
-async function downloadMjcfExamplesFolder(mujoco) {
-  const files = [
-    // humanoid
-    "humanoid/humanoid.xml",
-    // cassie
-    "cassie/assets/achilles-rod.obj",
-    "cassie/assets/cassie-texture.png",
-    "cassie/assets/foot-crank.obj",
-    "cassie/assets/foot.obj",
-    "cassie/assets/heel-spring.obj",
-    "cassie/assets/hip-pitch.obj",
-    "cassie/assets/hip-roll.obj",
-    "cassie/assets/hip-yaw.obj",
-    "cassie/assets/knee-spring.obj",
-    "cassie/assets/knee.obj",
-    "cassie/assets/pelvis.obj",
-    "cassie/assets/plantar-rod.obj",
-    "cassie/assets/shin.obj",
-    "cassie/assets/tarsus.obj",
-    "cassie/cassie.xml",
-    "cassie/scene.xml",
-    // shadow hand
-    "shadow_hand/assets/f_distal_pst.obj",
-    "shadow_hand/assets/f_knuckle.obj",
-    "shadow_hand/assets/f_middle.obj",
-    "shadow_hand/assets/f_proximal.obj",
-    "shadow_hand/assets/forearm_0.obj",
-    "shadow_hand/assets/forearm_1.obj",
-    "shadow_hand/assets/forearm_collision.obj",
-    "shadow_hand/assets/lf_metacarpal.obj",
-    "shadow_hand/assets/mounting_plate.obj",
-    "shadow_hand/assets/palm.obj",
-    "shadow_hand/assets/th_distal_pst.obj",
-    "shadow_hand/assets/th_middle.obj",
-    "shadow_hand/assets/th_proximal.obj",
-    "shadow_hand/assets/wrist.obj",
-    "shadow_hand/left_hand.xml",
-    "shadow_hand/right_hand.xml",
-    "shadow_hand/scene_left.xml",
-    "shadow_hand/scene_right.xml",
-  ];
-
-  const requests = files.map((p) => fetch("../mjcf/" + p));
-  const responses = await Promise.all(requests);
-  for (let i = 0; i < responses.length; i++) {
-    const path = files[i];
-    const parts = path.split("/");
-    let dir = "/working/";
-    for (let j = 0; j < parts.length - 1; j++) {
-      dir += parts[j];
-      if (!mujoco.FS.analyzePath(dir).exists) mujoco.FS.mkdir(dir);
-      dir += "/";
-    }
-    if (path.endsWith(".png") || path.endsWith(".obj")) {
-      mujoco.FS.writeFile(
-        "/working/" + path,
-        new Uint8Array(await responses[i].arrayBuffer())
-      );
-    } else {
-      mujoco.FS.writeFile("/working/" + path, await responses[i].text());
-    }
-  }
-}
-
-// Ensure a specific public MJCF path is present in VFS (idempotent)
-async function ensureMjcfInVFS(mujoco, path) {
-  const full = "/working/" + path;
-  if (mujoco.FS.analyzePath(full).exists) return;
-  // Download the whole folder for reliability
-  await downloadMjcfExamplesFolder(mujoco);
-}
+// Remove prefetch helpers; we rely on ensureMjcfPathWithDependencies from utils
 
 function removeAllMujocoRoots(viewer) {
   try {

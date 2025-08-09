@@ -1,13 +1,13 @@
-import { Example } from "./ViewerControls";
+import { ExampleRobot } from "@/types/robot";
 import { DM_Mono } from "next/font/google";
 
 const dmMono = DM_Mono({ subsets: ["latin"], weight: "400" });
 
 interface RobotCardProps {
   index: number;
-  example: Example;
+  example: ExampleRobot;
   isSelected: boolean;
-  handleExampleClick: (example: Example) => void;
+  handleExampleClick: (example: ExampleRobot) => void;
 }
 
 export default function RobotCard({
@@ -20,7 +20,7 @@ export default function RobotCard({
     <button
       key={index}
       onClick={() => handleExampleClick(example)}
-      className={`group relative overflow-hidden rounded-md p-4 text-left transition-all ${
+      className={`group relative overflow-hidden rounded-md p-4 text-left transition-all flex-shrink-0 w-full ${
         isSelected ? "bg-[#FBE651]" : "bg-[#FCF4DD] hover:-translate-y-0.5"
       }`}
     >

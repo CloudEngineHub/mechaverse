@@ -6,48 +6,14 @@ import { useRobot } from "@/hooks/useRobot";
 import { useMujocoViewer } from "@/contexts/MujocoViewerContext";
 import { DM_Mono } from "next/font/google";
 import RobotCard from "./RobotCard";
-
-export type FileType = "URDF" | "MJCF" | "SDF" | "USD";
-
-export interface Example {
-  name: string;
-  fileType: FileType;
-  path?: string;
-}
-
-const examples: Record<FileType, Example[]> = {
-  URDF: [
-    { name: "Cassie", fileType: "URDF", path: "/urdf/cassie/cassie.urdf" },
-    { name: "SO-100", fileType: "URDF", path: "/urdf/so-100/so_100.urdf" },
-    { name: "Anymal B", fileType: "URDF", path: "/urdf/anymal-b/anymal.urdf" },
-  ],
-  MJCF: [
-    { name: "Humanoid", fileType: "MJCF", path: "/mjcf/humanoid/humanoid.xml" },
-    { name: "Cassie", fileType: "MJCF", path: "/mjcf/cassie/scene.xml" },
-    {
-      name: "Shadow Hand",
-      fileType: "MJCF",
-      path: "/mjcf/shadow_hand/scene_right.xml",
-    },
-  ],
-  SDF: [
-    { name: "TurtleBot3", fileType: "SDF" },
-    { name: "PR2", fileType: "SDF" },
-    { name: "Pioneer", fileType: "SDF" },
-  ],
-  USD: [
-    { name: "Industrial", fileType: "USD" },
-    { name: "Drone", fileType: "USD" },
-    { name: "Bike", fileType: "USD" },
-  ],
-};
+import { ExampleRobot, RobotFileType } from "@/types/robot";
 
 const dmMono = DM_Mono({ subsets: ["latin"], weight: "400" });
 
 interface ViewerControlsProps {
   onUploadClick: () => void;
-  onExampleLoad?: (example: Example) => void;
-  onFileTypeChange?: (fileType: FileType) => void;
+  onExampleLoad?: (example: ExampleRobot) => void;
+  onFileTypeChange?: (fileType: RobotFileType) => void;
   onToggleSimulation?: () => void;
   isSimulation?: boolean;
 }
@@ -56,37 +22,57 @@ export default function ViewerControls({
   onUploadClick,
   onExampleLoad,
   onFileTypeChange,
-  onToggleSimulation,
-  isSimulation,
 }: ViewerControlsProps) {
-  const [selectedFileType, setSelectedFileType] = useState<FileType>("MJCF");
-  const { selectedRobot, loadExampleRobot } = useRobot();
-  const { loadPublicScene, currentScenePath } = useMujocoViewer();
+  const [selectedFileTypes, setSelectedFileTypes] = useState<RobotFileType[]>([
+    "URDF",
+    "MJCF",
+  ]);
+  const [examples, setExamples] = useState<ExampleRobot[]>();
+  const { selectedRobot, loadExampleRobot, setSelectedRobot } = useRobot();
+  const { loadPublicScene, clearScene } = useMujocoViewer();
+
+  // Load examples from public/example_robots.json
+  useEffect(() => {
+    let isMounted = true;
+    const load = async () => {
+      try {
+        const res = await fetch("/example_robots.json", { cache: "no-store" });
+        if (!res.ok) throw new Error("Failed to load example_robots.json");
+        const data = (await res.json()) as ExampleRobot[];
+        if (isMounted) setExamples(data);
+      } catch {
+        console.error("Failed to load example robots");
+      }
+    };
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
-    onFileTypeChange?.(selectedFileType);
-  }, [selectedFileType, onFileTypeChange]);
-
-  useEffect(() => {
-    if (selectedFileType === "MJCF" && !currentScenePath) {
-      loadPublicScene("cassie/scene.xml");
+    // Inform parent of primary type preference if needed (first selected)
+    if (selectedFileTypes.length > 0) {
+      onFileTypeChange?.(selectedFileTypes[0]);
     }
-  }, [selectedFileType, currentScenePath, loadPublicScene]);
+  }, [selectedFileTypes, onFileTypeChange]);
 
-  const handleExampleClick = (example: Example) => {
+  const handleExampleClick = (example: ExampleRobot) => {
     if (example.fileType === "URDF" && example.path) {
+      // Clear MJCF scene and select URDF robot
+      clearScene();
       loadExampleRobot(example.name);
     } else if (example.fileType === "MJCF" && example.path) {
-      setSelectedFileType("MJCF");
+      // Track selected MJCF example in the shared robot selection
+      setSelectedRobot(example.name);
       loadPublicScene(example.path.replace("/mjcf/", ""));
-      onFileTypeChange?.("MJCF");
     }
     onExampleLoad?.(example);
   };
 
   return (
     <div className="w-full h-full flex flex-col p-6">
-      <div className="w-full grid grid-cols-4 gap-3 mb-3 items-stretch">
+      <div className="w-full grid grid-cols-5 gap-3 mb-3 items-stretch">
         <button
           onClick={onUploadClick}
           className={`${dmMono.className} col-span-3 w-full h-full flex items-center justify-center gap-2 px-10 py-3 rounded-md bg-[#FBE651] text-[#968612] hover:bg-[#ffb601]/80 transition-all text-xs font-normal leading-normal not-italic`}
@@ -118,39 +104,31 @@ export default function ViewerControls({
           </svg>
           Upload
         </button>
-        <div className="col-span-1">
+        <div className="col-span-2">
           <FilterDropdown
-            value={selectedFileType}
+            value={selectedFileTypes}
             options={["URDF", "MJCF", "SDF", "USD"] as const}
-            onChange={(v) => setSelectedFileType(v as FileType)}
+            onChange={(v) => setSelectedFileTypes(v as RobotFileType[])}
             className="w-full"
           />
         </div>
       </div>
 
-      <div className="flex flex-col gap-4">
-        {examples[selectedFileType].map((example, index) => {
-          const isSelected =
-            selectedFileType === "URDF"
-              ? selectedRobot === example.name
-              : !!(
-                  currentScenePath &&
-                  example.path &&
-                  (currentScenePath.endsWith(
-                    example.path.replace("/mjcf/", "")
-                  ) ||
-                    currentScenePath.endsWith(example.path))
-                );
-          return (
-            <RobotCard
-              key={index}
-              index={index}
-              example={example}
-              isSelected={isSelected}
-              handleExampleClick={handleExampleClick}
-            />
-          );
-        })}
+      <div className="pt-2 flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col gap-4 scrollbar-hidden">
+        {(examples ?? [])
+          .filter((ex) => selectedFileTypes.includes(ex.fileType))
+          .map((example, index) => {
+            const isSelected = selectedRobot === example.name;
+            return (
+              <RobotCard
+                key={index}
+                index={index}
+                example={example}
+                isSelected={!!isSelected}
+                handleExampleClick={handleExampleClick}
+              />
+            );
+          })}
       </div>
 
       {/* {selectedFileType === "MJCF" && (

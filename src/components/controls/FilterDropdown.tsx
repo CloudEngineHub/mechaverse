@@ -6,9 +6,9 @@ import { DM_Mono } from "next/font/google";
 const dmMono = DM_Mono({ subsets: ["latin"], weight: "400" });
 
 export interface FilterDropdownProps<T extends string = string> {
-  value: T;
+  value: T[];
   options: readonly T[];
-  onChange: (value: T) => void;
+  onChange: (value: T[]) => void;
   className?: string;
 }
 
@@ -47,7 +47,7 @@ export default function FilterDropdown<T extends string = string>({
         } w-full flex items-center justify-center gap-1 rounded-[5px] border border-[rgba(150,134,18,0.19)] bg-[#FFFBF1] py-3 pr-[3px] pl-[10px]`}
       >
         <span className="text-[12px] font-normal leading-normal text-[#968612]">
-          Filter
+          Filter{value?.length ? ` (${value.length})` : ""}
         </span>
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -77,30 +77,55 @@ export default function FilterDropdown<T extends string = string>({
         <div
           className={`${dmMono.className} ${
             className ?? ""
-          } absolute z-50 right-0 mt-2 min-w-[6rem] overflow-hidden rounded-md border border-[rgba(150,134,18,0.19)] bg-[#fefdf7] shadow-md`}
+          } absolute z-50 right-0 mt-2 min-w-[6rem] overflow-hidden rounded-md border border-[rgba(150,134,18,0.19)] bg-[#fefdf7]`}
         >
-          <ul role="listbox" aria-activedescendant={`option-${value}`}>
-            {options.map((opt) => (
-              <li
-                key={opt}
-                id={`option-${opt}`}
-                role="option"
-                aria-selected={opt === value}
-              >
-                <button
-                  type="button"
-                  className={`block w-full px-3 py-2 text-left text-sm text-[#968612] ${
-                    opt === value ? "bg-[#ffb601]/80" : "hover:bg-black/5"
-                  }`}
-                  onClick={() => {
-                    onChange(opt);
-                    setOpen(false);
-                  }}
+          <ul role="listbox">
+            {options.map((opt) => {
+              const isSelected = value.includes(opt);
+              return (
+                <li
+                  key={opt}
+                  id={`option-${opt}`}
+                  role="option"
+                  aria-selected={isSelected}
                 >
-                  {opt}
-                </button>
-              </li>
-            ))}
+                  <button
+                    type="button"
+                    className={`flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-[#968612] hover:bg-black/5`}
+                    onClick={() => {
+                      const next = isSelected
+                        ? value.filter((v) => v !== opt)
+                        : [...value, opt];
+                      onChange(next);
+                    }}
+                  >
+                    <span
+                      aria-hidden
+                      className={`w-4 h-4 rounded-sm border border-[#968612] flex items-center justify-center ${
+                        isSelected ? "bg-[#fae652]" : "bg-transparent"
+                      }`}
+                    >
+                      {isSelected && (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="8"
+                          height="8"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="#968612"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      )}
+                    </span>
+                    {opt}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}

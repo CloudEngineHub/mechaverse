@@ -29,6 +29,20 @@ export interface RobotFileModel {
   name?: string;
 }
 
+export type RobotFileType = "URDF" | "MJCF" | "SDF" | "USD";
+
+export interface ExampleRobot {
+  name: string;
+  fileType: RobotFileType;
+  path?: string;
+  imagePath?: string;
+}
+
+export interface RobotFile {
+  type: RobotFileType;
+  file: RobotFileModel;
+}
+
 // Robot table structure from Supabase
 export interface Robot {
   repo_owner: string;

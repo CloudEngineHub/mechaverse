@@ -42,24 +42,6 @@
     "path": "/mjcf/shadow_hand/right_hand.xml"
   },
   {
-    "display_name": "TurtleBot3",
-    "owner": "placeholder",
-    "repo_name": "turtlebot3",
-    "fileType": "SDF"
-  },
-  {
-    "display_name": "PR2",
-    "owner": "placeholder",
-    "repo_name": "pr2",
-    "fileType": "SDF"
-  },
-  {
-    "display_name": "Pioneer",
-    "owner": "placeholder",
-    "repo_name": "pioneer",
-    "fileType": "SDF"
-  },
-  {
     "display_name": "Industrial",
     "owner": "placeholder",
     "repo_name": "industrial",

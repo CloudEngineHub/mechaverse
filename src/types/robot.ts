@@ -29,7 +29,7 @@ export interface RobotFileModel {
   name?: string;
 }
 
-export type RobotFileType = "URDF" | "MJCF" | "SDF" | "USD";
+export type RobotFileType = "URDF" | "MJCF" | "USD";
 
 export interface ExampleRobot {
   display_name: string;

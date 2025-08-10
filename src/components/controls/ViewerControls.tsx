@@ -57,11 +57,6 @@ export default function ViewerControls({ onUploadClick }: ViewerControlsProps) {
       setActiveRobotType("MJCF");
       setActiveRobotOwner(example.owner);
       setActiveRobotName(example.repo_name);
-    } else if (example.fileType === "SDF") {
-      // Select SDF example and load its scene
-      setActiveRobotType("SDF");
-      setActiveRobotOwner(example.owner);
-      setActiveRobotName(example.repo_name);
     } else if (example.fileType === "USD") {
       // Select USD example and load its scene
       setActiveRobotType("USD");
@@ -107,7 +102,7 @@ export default function ViewerControls({ onUploadClick }: ViewerControlsProps) {
         <div className="col-span-2">
           <FilterDropdown
             value={selectedFileTypes}
-            options={["URDF", "MJCF", "SDF", "USD"] as const}
+            options={["URDF", "MJCF", "USD"] as const}
             onChange={(v) => setSelectedFileTypes(v as RobotFileType[])}
             className="w-full"
           />

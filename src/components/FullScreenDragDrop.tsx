@@ -78,7 +78,7 @@ function DropModalCard({ onClose }: { onClose: () => void }) {
               Drop your robot files here
             </h3>
             <p className="text-brand max-w-md mb-6 leading-relaxed">
-              Drag and drop your URDF, MJCF, SDF, or USD files along with any
+              Drag and drop your URDF, MJCF, or USD files along with any
               associated mesh files. We&apos;ll automatically detect and load
               your robot model.
             </p>
@@ -88,9 +88,6 @@ function DropModalCard({ onClose }: { onClose: () => void }) {
               </span>
               <span className="px-3 py-1 bg-card text-brand rounded-full">
                 MJCF
-              </span>
-              <span className="px-3 py-1 bg-card text-brand rounded-full">
-                SDF
               </span>
               <span className="px-3 py-1 bg-card text-brand rounded-full">
                 USD

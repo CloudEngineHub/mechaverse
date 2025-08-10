@@ -39,8 +39,6 @@ export default function ViewerSwitch() {
       );
     case "USD":
       return <Placeholder label="USD" />;
-    case "SDF":
-      return <Placeholder label="SDF" />;
     default:
       return (
         <UrdfRuntimeProvider>

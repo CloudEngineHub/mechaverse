@@ -9,6 +9,7 @@
   --mv-floor: #fcf4dc;    /* floor/ground plane color inside MuJoCo scene */
   --mv-card-bg: #fae652;
   --mv-brand: #968815;    /* brand text/icon color */
+  --mv-highlight: #F4B940;
 }
 
 @theme inline {
@@ -23,6 +24,7 @@
   --color-background: var(--mv-scene-bg);
   --color-card: var(--mv-card-bg);
   --color-brand: var(--mv-brand);
+  --color-highlight: var(--mv-highlight);
 }
 
 @media (prefers-color-scheme: dark) {

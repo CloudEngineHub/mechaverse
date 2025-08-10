@@ -7,14 +7,12 @@ import { useRobot } from "@/hooks/useRobot";
 function Inner() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { setSelectedRobot } = useRobot();
-  const [robot, setRobot] = useState<string | null>(null);
   const [expectedPath, setExpectedPath] = useState<string | null>(null);
 
   useEffect(() => {
     // Read query on client only
     const params = new URLSearchParams(window.location.search);
     const r = params.get("robot") || "SO-100";
-    setRobot(r);
     setSelectedRobot(r);
     const map: Record<string, string> = {
       cassie: "/urdf/cassie/cassie.urdf",

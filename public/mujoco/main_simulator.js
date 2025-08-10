@@ -38,7 +38,7 @@ export class MujocoSimulator {
     };
     this.mujoco_time = 0.0;
     this.bodies = {};
-    this.lights = {};
+    this.lights = [];
     this.tmpVec = new THREE.Vector3();
     this.tmpQuat = new THREE.Quaternion();
     this.updateGUICallbacks = [];

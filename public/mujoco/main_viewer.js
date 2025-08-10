@@ -28,7 +28,7 @@ export class MujocoViewer {
     // Define parameters (simplified for render-only)
     this.params = { scene: null, help: false, keyframeNumber: 0 };
     this.bodies = {};
-    this.lights = {};
+    this.lights = [];
     this.tmpVec = new THREE.Vector3();
     this.tmpQuat = new THREE.Quaternion();
     this.updateGUICallbacks = [];

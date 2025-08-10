@@ -547,16 +547,24 @@ export async function loadSceneFromURL(mujoco, filename, parent) {
   }
 
   for (let b = 0; b < model.nbody; b++) {
-    //let parent_body = model.body_parentid()[b];
-    if (b == 0 || !bodies[0]) {
-      mujocoRoot.add(bodies[b]);
-    } else if (bodies[b]) {
-      bodies[0].add(bodies[b]);
-    } else {
+    // Ensure a THREE.Group exists for every body index before attaching
+    if (!bodies[b]) {
       bodies[b] = new THREE.Group();
-      bodies[b].name = names[b + 1];
+      // Derive a sensible default name if not present
+      try {
+        bodies[b].name = names[b + 1] || `body_${b}`;
+      } catch (_) {
+        bodies[b].name = `body_${b}`;
+      }
       bodies[b].bodyID = b;
       bodies[b].has_custom_mesh = false;
+    }
+
+    // Attach bodies to root (or to body 0 if available), avoiding undefined adds
+    if (b === 0 || !bodies[0]) {
+      // Attach directly to MuJoCo root until body[0] is available
+      mujocoRoot.add(bodies[b]);
+    } else {
       bodies[0].add(bodies[b]);
     }
   }

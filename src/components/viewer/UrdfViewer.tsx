@@ -6,6 +6,8 @@ import { DM_Mono } from "next/font/google";
 const dmMono = DM_Mono({ subsets: ["latin"], weight: "400" });
 
 import { useRobot } from "@/hooks/useRobot";
+import type { ExampleRobot } from "@/types/robot";
+import { useUrdfRuntime } from "@/contexts/UrdfRuntimeContext";
 import {
   createUrdfViewer,
   setupMeshLoader,
@@ -21,7 +23,7 @@ let URDFManipulator: typeof HTMLElement | null = null;
 // Register the URDFManipulator as a custom element (idempotent and race-safe)
 const registerURDFManipulator = async () => {
   if (typeof window === "undefined") return;
-  const w = window as unknown as { __urdfViewerRegistered?: boolean };
+  const w = window as Window & { __urdfViewerRegistered?: boolean };
   if (customElements.get("urdf-viewer") || w.__urdfViewerRegistered) return;
   try {
     if (!URDFManipulator) {
@@ -37,7 +39,7 @@ const registerURDFManipulator = async () => {
     const message = (error as Error)?.message || "";
     if (
       message.includes("has already been used") ||
-      (error as any)?.name === "NotSupportedError"
+      (error as { name?: string })?.name === "NotSupportedError"
     ) {
       w.__urdfViewerRegistered = true;
       return;
@@ -49,12 +51,8 @@ const registerURDFManipulator = async () => {
 const UrdfViewer: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [highlightedJoint, setHighlightedJoint] = useState<string | null>(null);
-  const {
-    registerUrdfProcessor,
-    onRobotDetected,
-    alternativeRobotModels,
-    selectedRobot,
-  } = useRobot();
+  const { activeRobotOwner, activeRobotName } = useRobot();
+  const { registerUrdfProcessor } = useUrdfRuntime();
 
   const viewerRef = useRef<URDFViewerElement | null>(null);
   const hasInitializedRef = useRef<boolean>(false);
@@ -70,12 +68,25 @@ const UrdfViewer: React.FC = () => {
   // State to track if we have a dropped robot
   const [hasDroppedRobot, setHasDroppedRobot] = useState(false);
 
-  // Mapping from robot names to their URDF paths
-  const robotPathMap: Record<string, string> = {
-    Cassie: "/urdf/cassie/cassie.urdf",
-    "SO-100": "/urdf/so-100/so_100.urdf",
-    "Anymal B": "/urdf/anymal-b/anymal.urdf",
-  };
+  // Mapping from example metadata owner/repo_name to path
+  const [examples, setExamples] = useState<ExampleRobot[] | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch("/example_robots.json", { cache: "no-store" });
+        if (!res.ok) throw new Error("Failed to load example_robots.json");
+        const data = (await res.json()) as ExampleRobot[];
+        if (mounted) setExamples(data);
+      } catch (e) {
+        console.warn("[UrdfViewer] Could not load example robots:", e);
+        if (mounted) setExamples([]);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   // Implement UrdfProcessor interface for drag and drop
   const urdfProcessor = useMemo(
@@ -99,21 +110,10 @@ const UrdfViewer: React.FC = () => {
     registerUrdfProcessor(urdfProcessor);
   }, [registerUrdfProcessor, urdfProcessor]);
 
-  // Listen for robot detection events
+  // Reset dropped state when switching to a catalog/example robot
   useEffect(() => {
-    const unsubscribe = onRobotDetected((result) => {
-      if (result.hasRobot && result.modelName) {
-        // Only set hasDroppedRobot to true if it's not a selected example robot
-        if (!selectedRobot || result.modelName !== selectedRobot) {
-          setHasDroppedRobot(true);
-        }
-      } else {
-        setHasDroppedRobot(false);
-      }
-    });
-
-    return unsubscribe;
-  }, [onRobotDetected, selectedRobot]);
+    setHasDroppedRobot(false);
+  }, [activeRobotOwner, activeRobotName]);
 
   // Main effect to create and setup the viewer only once
   useEffect(() => {
@@ -130,12 +130,18 @@ const UrdfViewer: React.FC = () => {
       // Setup mesh loading function
       setupMeshLoader(viewer, urlModifierFunc);
 
-      // Use selected robot or default to SO-100
+      // Resolve selected robot path (owner/repo) or default to SO-100
       const defaultUrdfPath = "/urdf/so-100/so_100.urdf";
-      const urdfPath =
-        selectedRobot && robotPathMap[selectedRobot]
-          ? robotPathMap[selectedRobot]
-          : defaultUrdfPath;
+      let urdfPath = defaultUrdfPath;
+      if (examples && activeRobotOwner && activeRobotName) {
+        const match = examples.find(
+          (ex) =>
+            ex.owner === activeRobotOwner && ex.repo_name === activeRobotName
+        );
+        if (match?.fileType === "URDF" && match.path) {
+          urdfPath = match.path;
+        }
+      }
 
       // Setup model loading if a path is available
       if (urdfPath) {
@@ -144,7 +150,7 @@ const UrdfViewer: React.FC = () => {
           urdfPath,
           packageRef.current,
           setCustomUrdfPath,
-          alternativeRobotModels
+          []
         );
         cleanupFunctions.push(cleanupModelLoading);
       }
@@ -175,7 +181,7 @@ const UrdfViewer: React.FC = () => {
       hasInitializedRef.current = false;
       cleanupFunctions.forEach((cleanup) => cleanup());
     };
-  }, [urlModifierFunc, alternativeRobotModels, selectedRobot]); // Added selectedRobot to dependencies
+  }, [urlModifierFunc, examples, activeRobotOwner, activeRobotName]);
 
   // Function to fit the robot to the camera view
   const fitRobotToView = (viewer: URDFViewerElement) => {
@@ -209,8 +215,8 @@ const UrdfViewer: React.FC = () => {
 
       // Transparent background on canvas if supported
       try {
-        // @ts-ignore - urdf-viewer exposes renderer on shadow DOM in some builds
-        const r = (viewer as any).renderer as THREE.WebGLRenderer | undefined;
+        const r = (viewer as unknown as { renderer?: THREE.WebGLRenderer })
+          .renderer as THREE.WebGLRenderer | undefined;
         if (r) {
           r.setClearColor(0x000000, 0);
           r.setClearAlpha(0);
@@ -229,10 +235,13 @@ const UrdfViewer: React.FC = () => {
 
   // Effect to handle robot selection changes
   useEffect(() => {
-    if (!viewerRef.current || !selectedRobot || !robotPathMap[selectedRobot])
-      return;
-
-    const urdfPath = robotPathMap[selectedRobot];
+    if (!viewerRef.current) return;
+    if (!examples || !activeRobotOwner || !activeRobotName) return;
+    const match = examples.find(
+      (ex) => ex.owner === activeRobotOwner && ex.repo_name === activeRobotName
+    );
+    if (!match || match.fileType !== "URDF" || !match.path) return;
+    const urdfPath = match.path;
 
     // Clear the current robot by removing the urdf attribute first
     viewerRef.current.removeAttribute("urdf");
@@ -267,7 +276,7 @@ const UrdfViewer: React.FC = () => {
         }
       }
     }, 100);
-  }, [selectedRobot, urlModifierFunc]);
+  }, [examples, activeRobotOwner, activeRobotName, urlModifierFunc]);
 
   // Effect to update the viewer when a new robot is dropped
   useEffect(() => {

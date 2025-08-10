@@ -38,7 +38,7 @@ export default function RobotCard({
               lineHeight: "normal",
             }}
           >
-            {example.name}
+            {example.display_name}
           </span>
         </div>
         <div className="flex items-center space-between gap-2">

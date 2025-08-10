@@ -1,38 +1,80 @@
 [
   {
-    "name": "Cassie",
+    "display_name": "Cassie",
+    "owner": "placeholder",
+    "repo_name": "cassie",
     "fileType": "URDF",
     "path": "/urdf/cassie/cassie.urdf"
   },
   {
-    "name": "SO-100",
+    "display_name": "SO-100",
+    "owner": "placeholder",
+    "repo_name": "so-100",
     "fileType": "URDF",
     "path": "/urdf/so-100/so_100.urdf"
   },
   {
-    "name": "Anymal B",
+    "display_name": "Anymal B",
+    "owner": "placeholder",
+    "repo_name": "anymal-b",
     "fileType": "URDF",
     "path": "/urdf/anymal-b/anymal.urdf"
   },
   {
-    "name": "Humanoid",
+    "display_name": "Humanoid",
+    "owner": "placeholder",
+    "repo_name": "humanoid",
     "fileType": "MJCF",
     "path": "/mjcf/humanoid/humanoid.xml"
   },
   {
-    "name": "Cassie Metal",
+    "display_name": "Cassie Metal",
+    "owner": "placeholder",
+    "repo_name": "cassie-metal",
     "fileType": "MJCF",
     "path": "/mjcf/cassie/cassie.xml"
   },
   {
-    "name": "Shadow Hand",
+    "display_name": "Shadow Hand",
+    "owner": "placeholder",
+    "repo_name": "shadow-hand",
     "fileType": "MJCF",
     "path": "/mjcf/shadow_hand/right_hand.xml"
   },
-  { "name": "TurtleBot3", "fileType": "SDF" },
-  { "name": "PR2", "fileType": "SDF" },
-  { "name": "Pioneer", "fileType": "SDF" },
-  { "name": "Industrial", "fileType": "USD" },
-  { "name": "Drone", "fileType": "USD" },
-  { "name": "Bike", "fileType": "USD" }
+  {
+    "display_name": "TurtleBot3",
+    "owner": "placeholder",
+    "repo_name": "turtlebot3",
+    "fileType": "SDF"
+  },
+  {
+    "display_name": "PR2",
+    "owner": "placeholder",
+    "repo_name": "pr2",
+    "fileType": "SDF"
+  },
+  {
+    "display_name": "Pioneer",
+    "owner": "placeholder",
+    "repo_name": "pioneer",
+    "fileType": "SDF"
+  },
+  {
+    "display_name": "Industrial",
+    "owner": "placeholder",
+    "repo_name": "industrial",
+    "fileType": "USD"
+  },
+  {
+    "display_name": "Drone",
+    "owner": "placeholder",
+    "repo_name": "drone",
+    "fileType": "USD"
+  },
+  {
+    "display_name": "Bike",
+    "owner": "placeholder",
+    "repo_name": "bike",
+    "fileType": "USD"
+  }
 ]

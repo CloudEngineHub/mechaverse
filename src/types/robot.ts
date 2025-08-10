@@ -32,7 +32,9 @@ export interface RobotFileModel {
 export type RobotFileType = "URDF" | "MJCF" | "SDF" | "USD";
 
 export interface ExampleRobot {
-  name: string;
+  display_name: string;
+  owner: string; // e.g., "placeholder"
+  repo_name: string; // slug
   fileType: RobotFileType;
   path?: string;
   imagePath?: string;

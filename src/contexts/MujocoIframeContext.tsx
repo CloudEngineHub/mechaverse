@@ -16,7 +16,7 @@ type MujocoMessage =
       hemi?: string;
     };
 
-type MujocoViewerContextType = {
+type MujocoIframeContextType = {
   registerIframeWindow: (win: Window | null) => void;
   loadPublicScene: (path: string) => void;
   loadXmlContent: (fileName: string, content: string) => void;
@@ -35,11 +35,11 @@ type MujocoViewerContextType = {
   currentScenePath?: string | null;
 };
 
-const MujocoViewerContext = createContext<MujocoViewerContextType | undefined>(
+const MujocoIframeContext = createContext<MujocoIframeContextType | undefined>(
   undefined
 );
 
-export const MujocoViewerProvider: React.FC<{ children: React.ReactNode }> = ({
+export const MujocoIframeProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const iframeWindowRef = useRef<Window | null>(null);
@@ -139,7 +139,7 @@ export const MujocoViewerProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   return (
-    <MujocoViewerContext.Provider
+    <MujocoIframeContext.Provider
       value={{
         registerIframeWindow,
         loadPublicScene,
@@ -153,13 +153,13 @@ export const MujocoViewerProvider: React.FC<{ children: React.ReactNode }> = ({
       }}
     >
       {children}
-    </MujocoViewerContext.Provider>
+    </MujocoIframeContext.Provider>
   );
 };
 
-export function useMujocoViewer() {
-  const ctx = useContext(MujocoViewerContext);
+export function useMujocoIframe() {
+  const ctx = useContext(MujocoIframeContext);
   if (!ctx)
-    throw new Error("useMujocoViewer must be used within MujocoViewerProvider");
+    throw new Error("useMujocoIframe must be used within MujocoIframeProvider");
   return ctx;
 }

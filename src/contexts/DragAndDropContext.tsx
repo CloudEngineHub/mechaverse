@@ -8,9 +8,9 @@ import React, {
   useRef,
 } from "react";
 
-import { processDroppedFiles } from "@/lib/robotUploadSupport";
 import { useRobot } from "@/hooks/useRobot";
-import { useMujocoViewer } from "@/contexts/MujocoViewerContext";
+import { useUrdfRuntime } from "@/contexts/UrdfRuntimeContext";
+import { useMujocoIframe } from "@/contexts/MujocoIframeContext";
 
 export type DragAndDropContextType = {
   isDragging: boolean;
@@ -38,8 +38,9 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Get contexts
-  const { urdfProcessor, processRobotFiles } = useRobot();
-  const { loadXmlContent } = useMujocoViewer();
+  const { setActiveType, selectUploadedRobot } = useRobot();
+  const { processDataTransfer } = useUrdfRuntime();
+  const { loadXmlContent } = useMujocoIframe();
 
   const handleDragOver = (e: DragEvent) => {
     e.preventDefault();
@@ -85,36 +86,65 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
         if (xmlFile) {
           const xml = await xmlFile.text();
           loadXmlContent(xmlFile.name, xml);
+          setActiveType("MJCF");
           // Allow parent to switch UI to MJCF if currently in URDF view
           onSwitchToMjcf?.();
           onFilesProcessed?.();
           return;
         }
 
-        if (urdfExists && urdfProcessor) {
-          const { availableModels, files: fileMap } = await processDroppedFiles(
-            e.dataTransfer,
-            urdfProcessor
+        if (urdfExists) {
+          await processDataTransfer(e.dataTransfer);
+          // Pick a best-effort name for the uploaded set
+          const primary = files.find((f) =>
+            f.name.toLowerCase().endsWith(".urdf")
           );
-          await processRobotFiles(fileMap, availableModels);
+          const owner = (
+            globalThis.crypto?.randomUUID
+              ? globalThis.crypto.randomUUID()
+              : Math.random().toString(36).slice(2, 10)
+          ) as string;
+          const repo = (primary?.name || "uploaded-robot").replace(
+            /\.[^/.]+$/,
+            ""
+          );
+          selectUploadedRobot(owner, repo);
+          setActiveType("URDF");
           onFilesProcessed?.();
           return;
         }
 
         // Fallback: try URDF pipeline if processor available
-        if (urdfProcessor) {
-          const { availableModels, files: fileMap } = await processDroppedFiles(
-            e.dataTransfer,
-            urdfProcessor
+        {
+          await processDataTransfer(e.dataTransfer);
+          const primary = files.find((f) =>
+            f.name.toLowerCase().endsWith(".urdf")
           );
-          await processRobotFiles(fileMap, availableModels);
+          const owner = (
+            globalThis.crypto?.randomUUID
+              ? globalThis.crypto.randomUUID()
+              : Math.random().toString(36).slice(2, 10)
+          ) as string;
+          const repo = (primary?.name || "uploaded-robot").replace(
+            /\.[^/.]+$/,
+            ""
+          );
+          selectUploadedRobot(owner, repo);
+          setActiveType("URDF");
           onFilesProcessed?.();
         }
       } catch (error) {
         console.error("❌ Error in handleDrop:", error);
       }
     },
-    [urdfProcessor, processRobotFiles, loadXmlContent]
+    [
+      loadXmlContent,
+      processDataTransfer,
+      onFilesProcessed,
+      onSwitchToMjcf,
+      selectUploadedRobot,
+      setActiveType,
+    ]
   );
 
   // Set up event listeners on the container

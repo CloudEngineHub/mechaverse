@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import FilterDropdown from "@/components/controls/FilterDropdown";
 import { useRobot } from "@/hooks/useRobot";
-import { useMujocoViewer } from "@/contexts/MujocoViewerContext";
+import { useMujocoIframe } from "@/contexts/MujocoIframeContext";
 import { DM_Mono } from "next/font/google";
 import RobotCard from "./RobotCard";
 import { ExampleRobot, RobotFileType } from "@/types/robot";
@@ -28,8 +28,14 @@ export default function ViewerControls({
     "MJCF",
   ]);
   const [examples, setExamples] = useState<ExampleRobot[]>();
-  const { selectedRobot, loadExampleRobot, setSelectedRobot } = useRobot();
-  const { loadPublicScene, clearScene } = useMujocoViewer();
+  const {
+    activeRobotOwner,
+    activeRobotName,
+    setActiveRobotOwner,
+    setActiveRobotName,
+    setActiveRobotType,
+  } = useRobot();
+  const { loadPublicScene, clearScene } = useMujocoIframe();
 
   // Load examples from public/example_robots.json
   useEffect(() => {
@@ -61,10 +67,14 @@ export default function ViewerControls({
     if (example.fileType === "URDF" && example.path) {
       // Clear MJCF scene and select URDF robot
       clearScene();
-      loadExampleRobot(example.name);
+      setActiveRobotType("URDF");
+      setActiveRobotOwner(example.owner);
+      setActiveRobotName(example.repo_name);
     } else if (example.fileType === "MJCF" && example.path) {
-      // Track selected MJCF example in the shared robot selection
-      setSelectedRobot(example.name);
+      // Select MJCF example and load its scene
+      setActiveRobotType("MJCF");
+      setActiveRobotOwner(example.owner);
+      setActiveRobotName(example.repo_name);
       loadPublicScene(example.path.replace("/mjcf/", ""));
     }
     onExampleLoad?.(example);
@@ -118,7 +128,9 @@ export default function ViewerControls({
         {(examples ?? [])
           .filter((ex) => selectedFileTypes.includes(ex.fileType))
           .map((example, index) => {
-            const isSelected = selectedRobot === example.name;
+            const isSelected =
+              activeRobotOwner === example.owner &&
+              activeRobotName === example.repo_name;
             return (
               <RobotCard
                 key={index}

@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo } from "react";
-import { useRobot } from "@/hooks/useRobot";
+import { useUrdfRuntime } from "@/contexts/UrdfRuntimeContext";
 
 /**
  * Component that only handles initializing the URDF processor
  * This component doesn't render anything visible, just initializes the processor
  */
 const UrdfProcessorInitializer: React.FC = () => {
-  const { registerUrdfProcessor } = useRobot();
+  const { registerUrdfProcessor } = useUrdfRuntime();
 
   // Create the URDF processor
   const urdfProcessor = useMemo(

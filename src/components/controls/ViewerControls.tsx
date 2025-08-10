@@ -12,20 +12,12 @@ const dmMono = DM_Mono({ subsets: ["latin"], weight: "400" });
 
 interface ViewerControlsProps {
   onUploadClick: () => void;
-  onExampleLoad?: (example: ExampleRobot) => void;
   onFileTypeChange?: (fileType: RobotFileType) => void;
-  onToggleSimulation?: () => void;
-  isSimulation?: boolean;
 }
 
-export default function ViewerControls({
-  onUploadClick,
-  onExampleLoad,
-  onFileTypeChange,
-}: ViewerControlsProps) {
+export default function ViewerControls({ onUploadClick }: ViewerControlsProps) {
   const [selectedFileTypes, setSelectedFileTypes] = useState<RobotFileType[]>([
     "URDF",
-    "MJCF",
   ]);
   const [examples, setExamples] = useState<ExampleRobot[]>();
   const {
@@ -56,28 +48,30 @@ export default function ViewerControls({
     };
   }, []);
 
-  useEffect(() => {
-    // Inform parent of primary type preference if needed (first selected)
-    if (selectedFileTypes.length > 0) {
-      onFileTypeChange?.(selectedFileTypes[0]);
-    }
-  }, [selectedFileTypes, onFileTypeChange]);
-
   const handleExampleClick = (example: ExampleRobot) => {
     if (example.fileType === "URDF" && example.path) {
       // Clear MJCF scene and select URDF robot
-      clearScene();
       setActiveRobotType("URDF");
       setActiveRobotOwner(example.owner);
       setActiveRobotName(example.repo_name);
     } else if (example.fileType === "MJCF" && example.path) {
       // Select MJCF example and load its scene
+      clearScene();
       setActiveRobotType("MJCF");
       setActiveRobotOwner(example.owner);
       setActiveRobotName(example.repo_name);
       loadPublicScene(example.path.replace("/mjcf/", ""));
+    } else if (example.fileType === "SDF") {
+      // Select SDF example and load its scene
+      setActiveRobotType("SDF");
+      setActiveRobotOwner(example.owner);
+      setActiveRobotName(example.repo_name);
+    } else if (example.fileType === "USD") {
+      // Select USD example and load its scene
+      setActiveRobotType("USD");
+      setActiveRobotOwner(example.owner);
+      setActiveRobotName(example.repo_name);
     }
-    onExampleLoad?.(example);
   };
 
   return (
@@ -142,19 +136,6 @@ export default function ViewerControls({
             );
           })}
       </div>
-
-      {/* {selectedFileType === "MJCF" && (
-        <button
-          onClick={onToggleSimulation}
-          className={`px-4 py-2 rounded-xl border-2 border-black font-semibold transition-all ${
-            isSimulation
-              ? "bg-[#ffb601] text-black shadow-sm"
-              : "bg-white hover:bg-gray-100"
-          }`}
-        >
-          {isSimulation ? "Stop simulation" : "Run simulation"}
-        </button>
-      )} */}
     </div>
   );
 }

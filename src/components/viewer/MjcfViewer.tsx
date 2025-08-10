@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 import { useMujocoIframe } from "@/contexts/MujocoIframeContext";
 import { RotateCcw } from "lucide-react";
 
-export default function MujocoViewer({
+export default function MjcfViewer({
   useSimulation = false,
 }: {
   useSimulation?: boolean;

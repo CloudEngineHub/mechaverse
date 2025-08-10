@@ -1,0 +1,37 @@
+"use client";
+
+import { useRobot } from "@/hooks/useRobot";
+import { useMemo } from "react";
+import MjcfViewer from "./MjcfViewer";
+import UrdfViewer from "./UrdfViewer";
+import type { RobotFileType } from "@/types/robot";
+
+function Placeholder({ label }: { label: string }) {
+  return (
+    <div className="w-full h-full grid place-items-center rounded-xl border border-dashed border-zinc-300 text-zinc-500">
+      <div className="text-sm">{label} viewer TBD</div>
+    </div>
+  );
+}
+
+export default function ViewerSwitch() {
+  const { activeRobotType } = useRobot();
+
+  const mode: RobotFileType | "URDF" | null = useMemo(() => {
+    // Default to URDF if unset
+    return activeRobotType ?? "URDF";
+  }, [activeRobotType]);
+
+  switch (mode) {
+    case "MJCF":
+      return <MjcfViewer />;
+    case "URDF":
+      return <UrdfViewer />;
+    case "USD":
+      return <Placeholder label="USD" />;
+    case "SDF":
+      return <Placeholder label="SDF" />;
+    default:
+      return <UrdfViewer />;
+  }
+}

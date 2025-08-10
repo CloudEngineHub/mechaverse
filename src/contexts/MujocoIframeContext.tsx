@@ -1,6 +1,12 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useRef } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useRef,
+  useState,
+} from "react";
 
 type MujocoMessage =
   | { type: "LOAD_PUBLIC_SCENE"; path: string }
@@ -32,7 +38,6 @@ type MujocoIframeContextType = {
       hemi: string;
     }>
   ) => void;
-  currentScenePath?: string | null;
 };
 
 const MujocoIframeContext = createContext<MujocoIframeContextType | undefined>(
@@ -45,9 +50,7 @@ export const MujocoIframeProvider: React.FC<{ children: React.ReactNode }> = ({
   const iframeWindowRef = useRef<Window | null>(null);
   const pendingSceneRef = useRef<string | null>(null);
   const pendingXmlRef = useRef<{ name: string; content: string } | null>(null);
-  const [currentScenePath, setCurrentScenePath] = React.useState<string | null>(
-    null
-  );
+  const [currentScenePath, setCurrentScenePath] = useState<string | null>(null);
 
   const post = useCallback((data: MujocoMessage) => {
     const target = iframeWindowRef.current;
@@ -149,7 +152,6 @@ export const MujocoIframeProvider: React.FC<{ children: React.ReactNode }> = ({
         setTransparentBackground,
         fitIsometric,
         setTheme,
-        currentScenePath,
       }}
     >
       {children}

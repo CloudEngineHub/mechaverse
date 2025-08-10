@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef } from "react";
-import { useMujocoIframe } from "@/contexts/MujocoIframeContext";
+import { useMujocoScene } from "@/contexts/MujocoSceneProvider";
 import { RotateCcw } from "lucide-react";
 
 export default function MjcfViewer({
@@ -9,7 +9,7 @@ export default function MjcfViewer({
   useSimulation?: boolean;
 }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const { registerIframeWindow, resetPose, setTheme } = useMujocoIframe();
+  const { registerIframeWindow, resetPose, setTheme } = useMujocoScene();
 
   useEffect(() => {
     const iframe = iframeRef.current;

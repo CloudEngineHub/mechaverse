@@ -11,7 +11,7 @@ import React, {
 
 import { useRobot } from "@/hooks/useRobot";
 import { useUrdfRuntime } from "@/contexts/UrdfRuntimeContext";
-import { useMujocoIframe } from "@/contexts/MujocoIframeContext";
+import { publishInlineXml } from "@/lib/mujocoEvents";
 
 export type DragAndDropContextType = {
   isDragging: boolean;
@@ -50,7 +50,6 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
   const { setActiveRobotType, setActiveRobotOwner, setActiveRobotName } =
     useRobot();
   const { processDataTransfer } = useUrdfRuntime();
-  const { loadXmlContent } = useMujocoIframe();
 
   const handleDragOver = (e: DragEvent) => {
     e.preventDefault();
@@ -95,8 +94,9 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
 
         if (xmlFile) {
           const xml = await xmlFile.text();
-          loadXmlContent(xmlFile.name, xml);
           setActiveRobotType("MJCF");
+          // Emit inline XML load request to MujocoSceneProvider
+          publishInlineXml({ name: xmlFile.name, content: xml });
           // Allow parent to switch UI to MJCF if currently in URDF view
           onSwitchToMjcf?.();
           onFilesProcessed?.();
@@ -150,7 +150,6 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
       }
     },
     [
-      loadXmlContent,
       processDataTransfer,
       onFilesProcessed,
       onSwitchToMjcf,

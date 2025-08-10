@@ -3,6 +3,7 @@
 import { useRobot } from "@/hooks/useRobot";
 import { useMemo } from "react";
 import MjcfViewer from "./MjcfViewer";
+import { MujocoSceneProvider } from "@/contexts/MujocoSceneProvider";
 import UrdfViewer from "./UrdfViewer";
 import type { RobotFileType } from "@/types/robot";
 
@@ -24,7 +25,11 @@ export default function ViewerSwitch() {
 
   switch (mode) {
     case "MJCF":
-      return <MjcfViewer />;
+      return (
+        <MujocoSceneProvider>
+          <MjcfViewer />
+        </MujocoSceneProvider>
+      );
     case "URDF":
       return <UrdfViewer />;
     case "USD":

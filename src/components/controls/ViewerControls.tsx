@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import FilterDropdown from "@/components/controls/FilterDropdown";
 import { useRobot } from "@/hooks/useRobot";
-import { useMujocoIframe } from "@/contexts/MujocoIframeContext";
 import { DM_Mono } from "next/font/google";
 import RobotCard from "./RobotCard";
 import { ExampleRobot, RobotFileType } from "@/types/robot";
@@ -27,7 +26,6 @@ export default function ViewerControls({ onUploadClick }: ViewerControlsProps) {
     setActiveRobotName,
     setActiveRobotType,
   } = useRobot();
-  const { loadPublicScene, clearScene } = useMujocoIframe();
 
   // Load examples from public/example_robots.json
   useEffect(() => {
@@ -55,12 +53,10 @@ export default function ViewerControls({ onUploadClick }: ViewerControlsProps) {
       setActiveRobotOwner(example.owner);
       setActiveRobotName(example.repo_name);
     } else if (example.fileType === "MJCF" && example.path) {
-      // Select MJCF example and load its scene
-      clearScene();
+      // Select MJCF example; scene load handled by MujocoSceneProvider
       setActiveRobotType("MJCF");
       setActiveRobotOwner(example.owner);
       setActiveRobotName(example.repo_name);
-      loadPublicScene(example.path.replace("/mjcf/", ""));
     } else if (example.fileType === "SDF") {
       // Select SDF example and load its scene
       setActiveRobotType("SDF");

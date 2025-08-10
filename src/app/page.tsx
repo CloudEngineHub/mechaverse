@@ -4,7 +4,6 @@ import { useState } from "react";
 
 // Contexts
 import { RobotProvider } from "@/contexts/RobotContext";
-import { MujocoIframeProvider } from "@/contexts/MujocoIframeContext";
 import { UrdfRuntimeProvider } from "@/contexts/UrdfRuntimeContext";
 
 // Components
@@ -23,34 +22,32 @@ export default function Home() {
       {/* Main content area */}
       <RobotProvider>
         <UrdfRuntimeProvider>
-          <MujocoIframeProvider>
-            <main className="flex flex-1 w-full h-[90vh] min-h-0 bg-[#FCF4DD] p-6">
-              <div className="flex flex-row w-full h-full gap-6">
-                {/* Robot Selector section */}
-                <div className="flex-[2] min-w-0 w-full h-full bg-[#FFFBF1] rounded-3xl overflow-hidden">
-                  <ViewerControls
-                    onUploadClick={() => setShowFullScreenDragDrop(true)}
-                  />
-                </div>
-                {/* Viewer section */}
-                <div
-                  className="flex-[4] min-w-0 h-full flex items-center justify-center bg-[#fef4da] rounded-3xl overflow-hidden"
-                  style={{ minWidth: "60%" }}
-                >
-                  <ViewerSwitch />
-                </div>
-              </div>
-            </main>
-
-            {/* Full Screen Drag Drop Overlay */}
-            {showFullScreenDragDrop && (
-              <div className="absolute inset-0">
-                <FullScreenDragDrop
-                  onClose={() => setShowFullScreenDragDrop(false)}
+          <main className="flex flex-1 w-full h-[90vh] min-h-0 bg-[#FCF4DD] p-6">
+            <div className="flex flex-row w-full h-full gap-6">
+              {/* Robot Selector section */}
+              <div className="flex-[2] min-w-0 w-full h-full bg-[#FFFBF1] rounded-3xl overflow-hidden">
+                <ViewerControls
+                  onUploadClick={() => setShowFullScreenDragDrop(true)}
                 />
               </div>
-            )}
-          </MujocoIframeProvider>
+              {/* Viewer section */}
+              <div
+                className="flex-[4] min-w-0 h-full flex items-center justify-center bg-[#fef4da] rounded-3xl overflow-hidden"
+                style={{ minWidth: "60%" }}
+              >
+                <ViewerSwitch />
+              </div>
+            </div>
+          </main>
+
+          {/* Full Screen Drag Drop Overlay */}
+          {showFullScreenDragDrop && (
+            <div className="absolute inset-0">
+              <FullScreenDragDrop
+                onClose={() => setShowFullScreenDragDrop(false)}
+              />
+            </div>
+          )}
         </UrdfRuntimeProvider>
       </RobotProvider>
     </div>

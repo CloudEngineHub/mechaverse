@@ -6,7 +6,11 @@ import React, {
   useContext,
   useRef,
   useState,
+  useEffect,
+  useMemo,
 } from "react";
+import { useRobot } from "@/hooks/useRobot";
+import { subscribeInlineXml, consumeLastInlineXml } from "@/lib/mujocoEvents";
 
 type MujocoMessage =
   | { type: "LOAD_PUBLIC_SCENE"; path: string }
@@ -22,7 +26,7 @@ type MujocoMessage =
       hemi?: string;
     };
 
-type MujocoIframeContextType = {
+type MujocoSceneContextType = {
   registerIframeWindow: (win: Window | null) => void;
   loadPublicScene: (path: string) => void;
   loadXmlContent: (fileName: string, content: string) => void;
@@ -40,17 +44,19 @@ type MujocoIframeContextType = {
   ) => void;
 };
 
-const MujocoIframeContext = createContext<MujocoIframeContextType | undefined>(
+const MujocoSceneContext = createContext<MujocoSceneContextType | undefined>(
   undefined
 );
 
-export const MujocoIframeProvider: React.FC<{ children: React.ReactNode }> = ({
+export const MujocoSceneProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
+  const { activeRobotType, activeRobotOwner, activeRobotName } = useRobot();
   const iframeWindowRef = useRef<Window | null>(null);
   const pendingSceneRef = useRef<string | null>(null);
   const pendingXmlRef = useRef<{ name: string; content: string } | null>(null);
   const [currentScenePath, setCurrentScenePath] = useState<string | null>(null);
+  const [examples, setExamples] = useState<any[] | null>(null);
 
   const post = useCallback((data: MujocoMessage) => {
     const target = iframeWindowRef.current;
@@ -141,8 +147,54 @@ export const MujocoIframeProvider: React.FC<{ children: React.ReactNode }> = ({
     [post]
   );
 
+  // Fetch example robots once (for resolving MJCF public scenes by owner/name)
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch("/example_robots.json", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = (await res.json()) as any[];
+        if (mounted) setExamples(data);
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Handle inline XML uploads published via event bus
+  useEffect(() => {
+    const pending = consumeLastInlineXml();
+    if (pending && activeRobotType === "MJCF") {
+      loadXmlContent(pending.name, pending.content);
+    }
+    const unsubscribe = subscribeInlineXml(({ name, content }) => {
+      if (activeRobotType === "MJCF") {
+        loadXmlContent(name, content);
+      }
+    });
+    return unsubscribe;
+  }, [activeRobotType, loadXmlContent]);
+
+  // Resolve current MJCF example selection and load scene
+  const selectedExample = useMemo(() => {
+    if (!examples || activeRobotType !== "MJCF") return null;
+    return examples.find(
+      (e) => e.owner === activeRobotOwner && e.repo_name === activeRobotName
+    );
+  }, [examples, activeRobotType, activeRobotOwner, activeRobotName]);
+
+  useEffect(() => {
+    if (!selectedExample || !selectedExample.path) return;
+    const rel = selectedExample.path.replace("/mjcf/", "");
+    loadPublicScene(rel);
+  }, [selectedExample, loadPublicScene]);
+
   return (
-    <MujocoIframeContext.Provider
+    <MujocoSceneContext.Provider
       value={{
         registerIframeWindow,
         loadPublicScene,
@@ -155,13 +207,13 @@ export const MujocoIframeProvider: React.FC<{ children: React.ReactNode }> = ({
       }}
     >
       {children}
-    </MujocoIframeContext.Provider>
+    </MujocoSceneContext.Provider>
   );
 };
 
-export function useMujocoIframe() {
-  const ctx = useContext(MujocoIframeContext);
+export function useMujocoScene() {
+  const ctx = useContext(MujocoSceneContext);
   if (!ctx)
-    throw new Error("useMujocoIframe must be used within MujocoIframeProvider");
+    throw new Error("useMujocoScene must be used within MujocoSceneProvider");
   return ctx;
 }

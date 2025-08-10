@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import MjcfViewer from "./MjcfViewer";
 import { MujocoSceneProvider } from "@/contexts/MujocoSceneProvider";
 import UrdfViewer from "./UrdfViewer";
+import { UrdfRuntimeProvider } from "@/contexts/UrdfRuntimeContext";
 import type { RobotFileType } from "@/types/robot";
 
 function Placeholder({ label }: { label: string }) {
@@ -31,12 +32,20 @@ export default function ViewerSwitch() {
         </MujocoSceneProvider>
       );
     case "URDF":
-      return <UrdfViewer />;
+      return (
+        <UrdfRuntimeProvider>
+          <UrdfViewer />
+        </UrdfRuntimeProvider>
+      );
     case "USD":
       return <Placeholder label="USD" />;
     case "SDF":
       return <Placeholder label="SDF" />;
     default:
-      return <UrdfViewer />;
+      return (
+        <UrdfRuntimeProvider>
+          <UrdfViewer />
+        </UrdfRuntimeProvider>
+      );
   }
 }

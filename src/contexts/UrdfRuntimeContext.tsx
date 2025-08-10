@@ -1,6 +1,12 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useRef } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+} from "react";
 import {
   UrdfProcessor,
   processDroppedFiles,
@@ -9,8 +15,6 @@ import {
 
 type UrdfRuntimeContextType = {
   registerUrdfProcessor: (processor: UrdfProcessor) => void;
-  processDataTransfer: (dataTransfer: DataTransfer) => Promise<void>;
-  processFileList: (fileList: FileList) => Promise<void>;
 };
 
 const UrdfRuntimeContext = createContext<UrdfRuntimeContextType | undefined>(
@@ -50,24 +54,50 @@ export const UrdfRuntimeProvider: React.FC<{ children: React.ReactNode }> = ({
     []
   );
 
-  const processDataTransfer = useCallback(
-    async (dataTransfer: DataTransfer) => {
-      await loadFirstModel((p) => processDroppedFiles(dataTransfer, p));
-    },
-    [loadFirstModel]
-  );
+  // Localize drag-and-drop inputs via a small event bus so we don't need
+  // this provider at the page level.
+  useEffect(() => {
+    let mounted = true;
+    import("@/lib/urdfEvents").then(
+      ({
+        subscribeUrdfDataTransfer,
+        subscribeUrdfFileList,
+        consumeLastUrdfDataTransfer,
+        consumeLastUrdfFileList,
+      }) => {
+        if (!mounted) return;
 
-  const processFileList = useCallback(
-    async (fileList: FileList) => {
-      await loadFirstModel((p) => processSelectedFiles(fileList, p));
-    },
-    [loadFirstModel]
-  );
+        // Consume any pending payloads before subscription
+        const pendingDT = consumeLastUrdfDataTransfer();
+        if (pendingDT) {
+          loadFirstModel((p) => processDroppedFiles(pendingDT, p));
+        }
+        const pendingFL = consumeLastUrdfFileList();
+        if (pendingFL) {
+          loadFirstModel((p) => processSelectedFiles(pendingFL, p));
+        }
+
+        const unsubDT = subscribeUrdfDataTransfer((dt) => {
+          loadFirstModel((p) => processDroppedFiles(dt, p));
+        });
+        const unsubFL = subscribeUrdfFileList((fl) => {
+          loadFirstModel((p) => processSelectedFiles(fl, p));
+        });
+
+        return () => {
+          unsubDT();
+          unsubFL();
+        };
+      }
+    );
+
+    return () => {
+      mounted = false;
+    };
+  }, [loadFirstModel]);
 
   return (
-    <UrdfRuntimeContext.Provider
-      value={{ registerUrdfProcessor, processDataTransfer, processFileList }}
-    >
+    <UrdfRuntimeContext.Provider value={{ registerUrdfProcessor }}>
       {children}
     </UrdfRuntimeContext.Provider>
   );

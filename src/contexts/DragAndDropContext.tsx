@@ -10,7 +10,7 @@ import React, {
 } from "react";
 
 import { useRobot } from "@/hooks/useRobot";
-import { useUrdfRuntime } from "@/contexts/UrdfRuntimeContext";
+import { publishUrdfDataTransfer } from "@/lib/urdfEvents";
 import { publishInlineXml } from "@/lib/mujocoEvents";
 
 export type DragAndDropContextType = {
@@ -49,7 +49,7 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
   // Get contexts
   const { setActiveRobotType, setActiveRobotOwner, setActiveRobotName } =
     useRobot();
-  const { processDataTransfer } = useUrdfRuntime();
+  // URDF processing is localized inside the URDF viewer provider
 
   const handleDragOver = (e: DragEvent) => {
     e.preventDefault();
@@ -104,7 +104,7 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
         }
 
         if (urdfExists) {
-          await processDataTransfer(e.dataTransfer);
+          publishUrdfDataTransfer(e.dataTransfer);
           // Pick a best-effort name for the uploaded set
           const primary = files.find((f) =>
             f.name.toLowerCase().endsWith(".urdf")
@@ -127,7 +127,7 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
 
         // Fallback: try URDF pipeline if processor available
         {
-          await processDataTransfer(e.dataTransfer);
+          publishUrdfDataTransfer(e.dataTransfer);
           const primary = files.find((f) =>
             f.name.toLowerCase().endsWith(".urdf")
           );
@@ -150,7 +150,6 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
       }
     },
     [
-      processDataTransfer,
       onFilesProcessed,
       onSwitchToMjcf,
       setActiveRobotType,

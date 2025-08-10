@@ -6,6 +6,7 @@ import React, {
   ReactNode,
   useCallback,
   useRef,
+  useContext,
 } from "react";
 
 import { useRobot } from "@/hooks/useRobot";
@@ -23,6 +24,14 @@ export const DragAndDropContext = createContext<
   DragAndDropContextType | undefined
 >(undefined);
 
+export function useDragAndDrop(): DragAndDropContextType {
+  const context = useContext(DragAndDropContext);
+  if (!context) {
+    throw new Error("useDragAndDrop must be used within a DragAndDropProvider");
+  }
+  return context;
+}
+
 interface DragAndDropProviderProps {
   children: ReactNode;
   onFilesProcessed?: () => void;
@@ -38,7 +47,8 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Get contexts
-  const { setActiveType, selectUploadedRobot } = useRobot();
+  const { setActiveRobotType, setActiveRobotOwner, setActiveRobotName } =
+    useRobot();
   const { processDataTransfer } = useUrdfRuntime();
   const { loadXmlContent } = useMujocoIframe();
 
@@ -86,7 +96,7 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
         if (xmlFile) {
           const xml = await xmlFile.text();
           loadXmlContent(xmlFile.name, xml);
-          setActiveType("MJCF");
+          setActiveRobotType("MJCF");
           // Allow parent to switch UI to MJCF if currently in URDF view
           onSwitchToMjcf?.();
           onFilesProcessed?.();
@@ -108,8 +118,9 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
             /\.[^/.]+$/,
             ""
           );
-          selectUploadedRobot(owner, repo);
-          setActiveType("URDF");
+          setActiveRobotOwner(owner);
+          setActiveRobotName(repo);
+          setActiveRobotType("URDF");
           onFilesProcessed?.();
           return;
         }
@@ -129,8 +140,9 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
             /\.[^/.]+$/,
             ""
           );
-          selectUploadedRobot(owner, repo);
-          setActiveType("URDF");
+          setActiveRobotOwner(owner);
+          setActiveRobotName(repo);
+          setActiveRobotType("URDF");
           onFilesProcessed?.();
         }
       } catch (error) {
@@ -142,8 +154,9 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
       processDataTransfer,
       onFilesProcessed,
       onSwitchToMjcf,
-      selectUploadedRobot,
-      setActiveType,
+      setActiveRobotType,
+      setActiveRobotOwner,
+      setActiveRobotName,
     ]
   );
 
@@ -179,18 +192,6 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
         }}
       >
         {children}
-        {isDragging && (
-          <div className="absolute inset-0 bg-blue-500/20 backdrop-blur-sm pointer-events-none z-50 flex items-center justify-center">
-            <div className="bg-white p-8 rounded-xl shadow-lg text-center border-2 border-blue-500">
-              <div className="text-3xl font-bold mb-4 text-blue-600">
-                Drop Robot Files Here
-              </div>
-              <p className="text-gray-600">
-                Release to upload your robot model
-              </p>
-            </div>
-          </div>
-        )}
       </DragAndDropContext.Provider>
     </div>
   );

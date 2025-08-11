@@ -2,12 +2,13 @@
 
 import Script from "next/script";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  DragAndDropProvider,
-  useDragAndDrop,
-} from "@/contexts/DragAndDropContext";
+
 import { useRobot } from "@/hooks/useRobot";
 import type { ExampleRobot } from "@/types/robot";
+import {
+  subscribeUsdDataTransfer,
+  consumeLastUsdDataTransfer,
+} from "@/lib/usdEvents";
 
 type UsdViewerHandle = {
   loadFromURL?: (url: string) => Promise<void> | void;
@@ -49,7 +50,6 @@ export default function UsdViewer() {
           container: containerRef.current,
           hdrPath: "/usd-viewer/environments/neutral.hdr",
           hostManagedDnd: true,
-          hostManagedUrl: true,
           onStatus: (msg: string) => setStatus(msg || ""),
         });
         if (!active) {
@@ -105,6 +105,20 @@ export default function UsdViewer() {
     };
   }, []);
 
+  // Handle USD file uploads via event bus
+  useEffect(() => {
+    const pending = consumeLastUsdDataTransfer();
+    if (pending && activeRobotType === "USD") {
+      onDataTransfer(pending.dataTransfer);
+    }
+    const unsubscribe = subscribeUsdDataTransfer(({ dataTransfer }) => {
+      if (activeRobotType === "USD") {
+        onDataTransfer(dataTransfer);
+      }
+    });
+    return unsubscribe;
+  }, [activeRobotType, onDataTransfer]);
+
   // React to ViewerControls selection for USD examples
   useEffect(() => {
     const handle = handleRef.current;
@@ -134,25 +148,9 @@ export default function UsdViewer() {
     }
   }, [activeRobotType, activeRobotOwner, activeRobotName, examples]);
 
-  function DndOverlay() {
-    const { isDragging } = useDragAndDrop();
-    if (!isDragging) return null;
-    return (
-      <div className="pointer-events-none absolute inset-0 border-2 border-dashed border-amber-400 bg-amber-50/40 flex items-center justify-center text-amber-700 text-sm">
-        Drop USD/USDZ/USDA files to load
-      </div>
-    );
-  }
-
   return (
     <>
       <div ref={containerRef} className="w-full h-full relative">
-        <DragAndDropProvider
-          targetRef={containerRef}
-          onDataTransfer={onDataTransfer}
-        >
-          <DndOverlay />
-        </DragAndDropProvider>
         <p className="pointer-events-none absolute left-2 bottom-2 m-0 px-2 py-1 rounded bg-[#FFFBF1] text-[#968612] text-[0.75em] opacity-70">
           {status}
         </p>

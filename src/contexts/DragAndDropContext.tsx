@@ -12,6 +12,7 @@ import React, {
 import { useRobot } from "@/hooks/useRobot";
 import { publishUrdfDataTransfer } from "@/lib/urdfEvents";
 import { publishInlineXml } from "@/lib/mujocoEvents";
+import { publishUsdDataTransfer } from "@/lib/usdEvents";
 
 export type DragAndDropContextType = {
   isDragging: boolean;
@@ -63,28 +64,31 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
     useRobot();
   // URDF processing is localized inside the URDF viewer provider
 
-  const handleDragOver = (e: DragEvent) => {
+  const handleDragOver = useCallback((e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-  };
+  }, []);
 
-  const handleDragEnter = (e: DragEvent) => {
+  const handleDragEnter = useCallback((e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(true);
-  };
+  }, []);
 
-  const handleDragLeave = (e: DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleDragLeave = useCallback(
+    (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
 
-    // Only set isDragging to false if we're leaving the container
-    // This checks if the related target is outside our container
-    const containerEl = targetRef?.current ?? internalContainerRef.current;
-    if (containerEl && !containerEl.contains(e.relatedTarget as Node)) {
-      setIsDragging(false);
-    }
-  };
+      // Only set isDragging to false if we're leaving the container
+      // This checks if the related target is outside our container
+      const containerEl = targetRef?.current ?? internalContainerRef.current;
+      if (containerEl && !containerEl.contains(e.relatedTarget as Node)) {
+        setIsDragging(false);
+      }
+    },
+    [targetRef]
+  );
 
   const handleDrop = useCallback(
     async (e: DragEvent) => {
@@ -115,6 +119,10 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
         const urdfExists = files.some((f) =>
           f.name.toLowerCase().endsWith(".urdf")
         );
+        const usdExists = files.some((f) => {
+          const ext = f.name.toLowerCase().split(".").pop();
+          return ext && ["usd", "usdz", "usda", "usdc"].includes(ext);
+        });
 
         if (xmlFile) {
           const xml = await xmlFile.text();
@@ -123,6 +131,37 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
           publishInlineXml({ name: xmlFile.name, content: xml });
           // Allow parent to switch UI to MJCF if currently in URDF view
           onSwitchToMjcf?.();
+          onFilesProcessed?.();
+          return;
+        }
+
+        if (usdExists) {
+          // Handle USD files by switching to USD viewer and publishing to event bus
+          setActiveRobotType("USD");
+          // Generate a unique identifier for this uploaded USD
+          const primary = files.find((f) => {
+            const ext = f.name.toLowerCase().split(".").pop();
+            return ext && ["usd", "usdz", "usda", "usdc"].includes(ext);
+          });
+          const owner = (
+            globalThis.crypto?.randomUUID
+              ? globalThis.crypto.randomUUID()
+              : Math.random().toString(36).slice(2, 10)
+          ) as string;
+          const repo = (primary?.name || "uploaded-usd").replace(
+            /\.[^/.]+$/,
+            ""
+          );
+          setActiveRobotOwner(owner);
+          setActiveRobotName(repo);
+
+          // Publish USD data transfer to event bus for UsdViewer to handle
+          publishUsdDataTransfer({
+            dataTransfer: e.dataTransfer,
+            owner,
+            name: repo,
+          });
+
           onFilesProcessed?.();
           return;
         }
@@ -199,7 +238,7 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
       container.removeEventListener("dragleave", handleDragLeave);
       container.removeEventListener("drop", handleDrop);
     };
-  }, [handleDrop, targetRef]); // Re-register when handleDrop changes
+  }, [handleDrop, handleDragOver, handleDragEnter, handleDragLeave, targetRef]); // Re-register when handlers change
 
   const provider = (
     <DragAndDropContext.Provider

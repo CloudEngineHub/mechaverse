@@ -247,7 +247,27 @@ export async function loadSceneFromURL(mujoco, filename, parent) {
   }
 
   // Load in the state from XML.
-  parent.model = mujoco.Model.load_from_xml("/working/" + filename);
+  const xmlVfsPath = "/working/" + filename;
+  try {
+    const exists = mujoco.FS.analyzePath(xmlVfsPath).exists;
+    if (!exists) {
+      throw new Error(`XML not found in VFS: ${xmlVfsPath}`);
+    }
+    // Sanity: ensure non-empty and looks like XML
+    const xmlText = mujoco.FS.readFile(xmlVfsPath, { encoding: "utf8" });
+    if (!xmlText || !String(xmlText).includes("<mujoco")) {
+      throw new Error(
+        `XML appears invalid or empty at ${xmlVfsPath} (length=${
+          xmlText?.length ?? 0
+        })`
+      );
+    }
+    parent.model = mujoco.Model.load_from_xml(xmlVfsPath);
+  } catch (err) {
+    // Re-throw with additional context for easier debugging
+    const contextMsg = `Failed to compile MJCF at ${xmlVfsPath}`;
+    throw new Error(`${contextMsg}: ${String(err)}`);
+  }
   parent.state = new mujoco.State(parent.model);
   parent.simulation = new mujoco.Simulation(parent.model, parent.state);
 
@@ -627,6 +647,9 @@ export async function ensureMjcfPathWithDependencies(mujoco, path) {
     }
 
     // Resolve <asset> file references (mesh, texture, hfield, skin)
+    // Respect optional compiler meshdir if present
+    const compilerEl = doc.querySelector("compiler[meshdir]");
+    const meshdir = compilerEl?.getAttribute("meshdir") || "assets";
     const assetFileSelectors = [
       "mesh[file]",
       "texture[file]",
@@ -638,7 +661,8 @@ export async function ensureMjcfPathWithDependencies(mujoco, path) {
       for (const n of nodes) {
         const file = n.getAttribute("file");
         if (!file) continue;
-        const assetRel = joinRelative(relPath, "assets/" + file);
+        // If file already looks like a path, still prefix meshdir (MuJoCo does meshdir + file)
+        const assetRel = joinRelative(relPath, `${meshdir}/${file}`);
         const fullVfs = "/working/" + assetRel;
         if (!mujoco.FS.analyzePath(fullVfs).exists) {
           const url = basePrefix + assetRel;

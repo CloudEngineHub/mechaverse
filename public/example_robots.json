@@ -42,6 +42,13 @@
     "path": "/mjcf/shadow_hand/right_hand.xml"
   },
   {
+    "display_name": "Lelamp",
+    "owner": "placeholder",
+    "repo_name": "lelamp",
+    "fileType": "MJCF",
+    "path": "/mjcf/lelamp/robot.xml"
+  },
+  {
     "display_name": "Bike",
     "owner": "placeholder",
     "repo_name": "bike",

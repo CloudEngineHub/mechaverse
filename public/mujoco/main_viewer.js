@@ -507,13 +507,14 @@ window.addEventListener("message", async (event) => {
       // Unknown message type
     }
   } catch (error) {
+    // Log the full error object for better debugging of Emscripten exceptions
     console.error("❌ Error handling message:", error);
 
-    // Notify parent of error
+    // Notify parent of error with a stringified fallback to capture non-Error throws
     window.parent.postMessage(
       {
         type: "ERROR",
-        error: error.message,
+        error: String(error),
       },
       "*"
     );

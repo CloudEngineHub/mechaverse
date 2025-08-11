@@ -42,21 +42,17 @@
     "path": "/mjcf/shadow_hand/right_hand.xml"
   },
   {
-    "display_name": "Industrial",
-    "owner": "placeholder",
-    "repo_name": "industrial",
-    "fileType": "USD"
-  },
-  {
-    "display_name": "Drone",
-    "owner": "placeholder",
-    "repo_name": "drone",
-    "fileType": "USD"
-  },
-  {
     "display_name": "Bike",
     "owner": "placeholder",
     "repo_name": "bike",
-    "fileType": "USD"
+    "fileType": "USD",
+    "path": "/usd/bike/CarbonFrameBike.usdz"
+  },
+  {
+    "display_name": "Minecraft",
+    "owner": "placeholder",
+    "repo_name": "minecraft",
+    "fileType": "USD",
+    "path": "/usd/minecraft/McUsd.usda"
   }
 ]

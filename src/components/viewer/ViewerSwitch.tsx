@@ -7,14 +7,7 @@ import { MujocoSceneProvider } from "@/contexts/MujocoSceneProvider";
 import UrdfViewer from "./UrdfViewer";
 import { UrdfRuntimeProvider } from "@/contexts/UrdfRuntimeContext";
 import type { RobotFileType } from "@/types/robot";
-
-function Placeholder({ label }: { label: string }) {
-  return (
-    <div className="w-full h-full grid place-items-center rounded-xl border border-dashed border-zinc-300 text-zinc-500">
-      <div className="text-sm">{label} viewer TBD</div>
-    </div>
-  );
-}
+import UsdViewer from "./UsdViewer";
 
 export default function ViewerSwitch() {
   const { activeRobotType } = useRobot();
@@ -38,7 +31,9 @@ export default function ViewerSwitch() {
         </UrdfRuntimeProvider>
       );
     case "USD":
-      return <Placeholder label="USD" />;
+      // return <Placeholder label="USD" />;
+      return <UsdViewer />;
+
     default:
       return (
         <UrdfRuntimeProvider>

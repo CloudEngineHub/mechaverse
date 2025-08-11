@@ -29,10 +29,7 @@ export default function Home() {
               />
             </div>
             {/* Viewer section */}
-            <div
-              className="flex-[4] min-w-0 h-full flex items-center justify-center bg-[#fef4da] rounded-3xl overflow-hidden"
-              style={{ minWidth: "60%" }}
-            >
+            <div className="flex-[4] min-w-0 h-full flex items-center justify-center bg-[#fef4da] rounded-3xl overflow-hidden">
               <ViewerSwitch />
             </div>
           </div>

@@ -36,15 +36,27 @@ interface DragAndDropProviderProps {
   children: ReactNode;
   onFilesProcessed?: () => void;
   onSwitchToMjcf?: () => void;
+  /**
+   * Optional external target element to bind drag events to.
+   * If omitted, the provider will render a wrapper div and bind to it.
+   */
+  targetRef?: React.RefObject<HTMLElement | null>;
+  /**
+   * Optional custom DataTransfer handler. If provided, the default
+   * URDF/MJCF logic is skipped and this callback is invoked instead.
+   */
+  onDataTransfer?: (dataTransfer: DataTransfer) => Promise<void> | void;
 }
 
 export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
   children,
   onFilesProcessed,
   onSwitchToMjcf,
+  targetRef,
+  onDataTransfer,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const internalContainerRef = useRef<HTMLDivElement>(null);
 
   // Get contexts
   const { setActiveRobotType, setActiveRobotOwner, setActiveRobotName } =
@@ -68,7 +80,8 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
 
     // Only set isDragging to false if we're leaving the container
     // This checks if the related target is outside our container
-    if (!containerRef.current?.contains(e.relatedTarget as Node)) {
+    const containerEl = targetRef?.current ?? internalContainerRef.current;
+    if (containerEl && !containerEl.contains(e.relatedTarget as Node)) {
       setIsDragging(false);
     }
   };
@@ -82,6 +95,17 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
       // Drop event detected
 
       if (!e.dataTransfer) return;
+
+      // If a custom handler is provided (e.g., USD viewer), use it
+      if (onDataTransfer) {
+        try {
+          await onDataTransfer(e.dataTransfer);
+          onFilesProcessed?.();
+        } catch (error) {
+          console.error("❌ Error in custom onDataTransfer handler:", error);
+        }
+        return;
+      }
 
       try {
         const files = Array.from(e.dataTransfer.files);
@@ -152,6 +176,7 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
     [
       onFilesProcessed,
       onSwitchToMjcf,
+      onDataTransfer,
       setActiveRobotType,
       setActiveRobotOwner,
       setActiveRobotName,
@@ -160,7 +185,7 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
 
   // Set up event listeners on the container
   useEffect(() => {
-    const container = containerRef.current;
+    const container = targetRef?.current ?? internalContainerRef.current;
     if (!container) return;
 
     container.addEventListener("dragover", handleDragOver);
@@ -174,23 +199,33 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
       container.removeEventListener("dragleave", handleDragLeave);
       container.removeEventListener("drop", handleDrop);
     };
-  }, [handleDrop]); // Re-register when handleDrop changes
+  }, [handleDrop, targetRef]); // Re-register when handleDrop changes
 
+  const provider = (
+    <DragAndDropContext.Provider
+      value={{
+        isDragging,
+        setIsDragging,
+        handleDrop,
+        onFilesProcessed,
+      }}
+    >
+      {children}
+    </DragAndDropContext.Provider>
+  );
+
+  // If an external targetRef is provided, do not wrap children; just provide context
+  if (targetRef) {
+    return provider;
+  }
+
+  // Otherwise, render a container that acts as the drop target
   return (
     <div
-      ref={containerRef}
+      ref={internalContainerRef}
       className="h-full w-full flex items-center justify-center"
     >
-      <DragAndDropContext.Provider
-        value={{
-          isDragging,
-          setIsDragging,
-          handleDrop,
-          onFilesProcessed,
-        }}
-      >
-        {children}
-      </DragAndDropContext.Provider>
+      {provider}
     </div>
   );
 };

@@ -10,6 +10,12 @@
   --mv-card-bg: #fae652;
   --mv-brand: #968815;    /* brand text/icon color */
   --mv-highlight: #F4B940;
+  --color-bg-0: rgb(255, 255, 255);
+  --color-bg-1: hsl(209, 36%, 86%);
+  --color-bg-2: hsl(224, 44%, 95%);
+  --color-theme-1: #FFFBF1;
+  --color-theme-2: #4075a6;
+  --color-text: #968612;
 }
 
 @theme inline {
@@ -46,7 +52,11 @@ body {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-dm-mono);
+  margin: 0;
+  padding: 0;
+  font-family: "DM Mono", monospace;
+  min-height: 100vh;
+  background-color: #fff5db;
 }
 
 /* Utility: hide scrollbars while keeping scroll functionality */
@@ -64,4 +74,39 @@ body {
 #__next-build-watcher,
 [data-nextjs-router-banner] {
   display: none !important;
+}
+
+
+.footer {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  margin-bottom: 15px;
+}
+
+#message-log {
+  opacity: 0.5;
+  font-size: 0.75em;
+  color: white;
+  margin-left: 14px;
+  margin-top: 0;
+  font-style: italic;
+  margin-bottom: 0;
+  margin-top: 0;
+}
+
+
+.have-custom-file a.file.hide {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg-0: rgb(23, 22, 22);
+    --color-bg-1: hsl(209, 36%, 16%);
+    --color-bg-2: hsl(224, 44%, 5%);
+    --color-theme-1: #ffffff;
+    --color-theme-2: #4075a6;
+    --color-text: rgba(255, 255, 255, 0.7);
+  }
 }

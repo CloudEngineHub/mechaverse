@@ -1,112 +1,19 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&display=swap");
 @import "tailwindcss";
+@plugin "tailwind-scrollbar";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-  /* Mechaverse viewer theme tokens */
-  --mv-scene-bg: #fef4da; /* outer app + three.js scene background */
-  --mv-floor: #fcf4dc;    /* floor/ground plane color inside MuJoCo scene */
-  --mv-card-bg: #fae652;
-  --mv-brand: #968815;    /* brand text/icon color */
-  --mv-highlight: #F4B940;
-  --color-bg-0: rgb(255, 255, 255);
-  --color-bg-1: hsl(209, 36%, 86%);
-  --color-bg-2: hsl(224, 44%, 95%);
-  --color-theme-1: #FFFBF1;
-  --color-theme-2: #4075a6;
-  --color-text: #968612;
-}
-
+/* Theme tokens (Tailwind v4) */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-dm-mono: "DM Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  --font-sans: var(--font-dm-mono);
+  /* Viewer-specific tokens used by JS and CSS */
+  --mujoco-scene-bg: #FCF4DD;
+
+  /* Tailwind color tokens consumed via bg-*, text-*, etc. */
+  --color-background: #FCF4DD;
+  --color-foreground: #968612;
+  --color-brand: #968812;
+  --color-highlight: #FBE651;
+
+  /* Fonts wired to next/font variable */
   --font-mono: var(--font-dm-mono);
-  --font-helvetica-now-display: "Helvetica Now Display Extra Bold", Helvetica, Arial, sans-serif;
-  --font-roboto: var(--font-roboto);
-  /* Brand color tokens for use with bg-*, text-*, fill-*, stroke-*, border-* */
-  --color-background: var(--mv-scene-bg);
-  --color-card: var(--mv-card-bg);
-  --color-brand: var(--mv-brand);
-  --color-highlight: var(--mv-highlight);
+  --font-sans: var(--font-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    /* keep light-toned viewer tokens unless you add a dark theme later */
-  }
-}
-
-html,
-body {
-  height: 100vh;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  margin: 0;
-  padding: 0;
-  font-family: "DM Mono", monospace;
-  min-height: 100vh;
-  background-color: #fff5db;
-}
-
-/* Utility: hide scrollbars while keeping scroll functionality */
-.scrollbar-hidden {
-  -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
-}
-.scrollbar-hidden::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Opera */
-}
-
-/* Hide Next.js dev overlay logo/indicator for clean captures in dev */
-/* The dev overlay can inject elements with these attributes/selectors */
-[data-next-overlay],
-#__next-build-watcher,
-[data-nextjs-router-banner] {
-  display: none !important;
-}
-
-
-.footer {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  margin-bottom: 15px;
-}
-
-#message-log {
-  opacity: 0.5;
-  font-size: 0.75em;
-  color: white;
-  margin-left: 14px;
-  margin-top: 0;
-  font-style: italic;
-  margin-bottom: 0;
-  margin-top: 0;
-}
-
-
-.have-custom-file a.file.hide {
-  display: none;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-bg-0: rgb(23, 22, 22);
-    --color-bg-1: hsl(209, 36%, 16%);
-    --color-bg-2: hsl(224, 44%, 5%);
-    --color-theme-1: #ffffff;
-    --color-theme-2: #4075a6;
-    --color-text: rgba(255, 255, 255, 0.7);
-  }
-}

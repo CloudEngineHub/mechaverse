@@ -1,7 +1,4 @@
 import { ExampleRobot } from "@/types/robot";
-import { DM_Mono } from "next/font/google";
-
-const dmMono = DM_Mono({ subsets: ["latin"], weight: "400" });
 
 interface RobotCardProps {
   index: number;
@@ -30,13 +27,7 @@ export default function RobotCard({
             <span className="text-gray-400 text-xl">🦾</span>
           </div>
           <span
-            className={`${dmMono.className} text-[#968612]`}
-            style={{
-              fontSize: "1rem",
-              fontStyle: "normal",
-              fontWeight: 400,
-              lineHeight: "normal",
-            }}
+            className={`font-mono text-[#968612] text-[1rem] not-italic font-normal leading-normal`}
           >
             {example.display_name}
           </span>
@@ -44,7 +35,7 @@ export default function RobotCard({
         <div className="flex items-center space-between gap-2">
           <div className="border-1 border-[#968612] rounded-sm px-3 items-center justify-center">
             <span
-              className={`${dmMono.className} text-[0.875rem] not-italic font-normal leading-normal text-[#968612]`}
+              className={`font-mono text-[0.875rem] not-italic font-normal leading-normal text-[#968612]`}
             >
               {example.fileType.toUpperCase()}
             </span>
@@ -77,8 +68,7 @@ export default function RobotCard({
                 </g>
               </svg>
               <span
-                className={`${dmMono.className} text-[#890A0A] text-[0.875rem] not-italic font-normal leading-normal`}
-                style={{ fontFamily: '"DM Mono"' }}
+                className={`font-mono text-[#890A0A] text-[0.875rem] not-italic font-normal leading-normal`}
               >
                 Beta
               </span>

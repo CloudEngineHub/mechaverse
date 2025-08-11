@@ -53,8 +53,7 @@ function DropModalCard({ onClose }: { onClose: () => void }) {
           <div className="text-center">
             <div
               className={clsx(
-                "w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center transition-all duration-300",
-                "bg-card",
+                "w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center transition-all duration-300 bg-highlight",
                 isDragging
                   ? "ring-4 ring-brand/40 shadow-[0_0_30px_rgba(150,136,21,0.35)]"
                   : "ring-0"
@@ -83,13 +82,13 @@ function DropModalCard({ onClose }: { onClose: () => void }) {
               your robot model.
             </p>
             <div className="flex flex-wrap justify-center gap-2 text-sm text-brand">
-              <span className="px-3 py-1 bg-card text-brand rounded-full">
+              <span className="px-3 py-1 bg-highlight text-brand rounded-full">
                 URDF
               </span>
-              <span className="px-3 py-1 bg-card text-brand rounded-full">
+              <span className="px-3 py-1 bg-highlight text-brand rounded-full">
                 MJCF
               </span>
-              <span className="px-3 py-1 bg-card text-brand rounded-full">
+              <span className="px-3 py-1 bg-highlight text-brand rounded-full">
                 USD
               </span>
             </div>

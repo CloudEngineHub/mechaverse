@@ -41,8 +41,8 @@ export default function MjcfViewer() {
         registerIframeWindow(iframe.contentWindow);
         // Push CSS variable-based theme to iframe once ready
         const styles = getComputedStyle(document.documentElement);
-        const sceneBg = styles.getPropertyValue("--mv-scene-bg").trim();
-        const floor = styles.getPropertyValue("--mv-floor").trim();
+        const sceneBg = styles.getPropertyValue("--mujoco-scene-bg").trim();
+        const floor = styles.getPropertyValue("--mujoco-scene-bg").trim();
         setTheme({ sceneBg, floor, ambient: floor, hemi: floor });
       }
     };
@@ -58,15 +58,7 @@ export default function MjcfViewer() {
   }, [registerIframeWindow]);
 
   return (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        flexDirection: "row",
-        position: "relative",
-      }}
-    >
+    <div className="w-full h-full flex flex-row relative">
       <div
         style={{
           width: "100%",
@@ -74,7 +66,7 @@ export default function MjcfViewer() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "var(--mv-scene-bg)",
+          background: "var(--mujoco-scene-bg)",
           boxShadow: "2px 0 8px rgba(0,0,0,0.04)",
           position: "relative",
           zIndex: 1,
@@ -95,7 +87,7 @@ export default function MjcfViewer() {
             padding: 0,
             border: "none",
             display: "block",
-            background: "var(--mv-scene-bg)",
+            background: "var(--mujoco-scene-bg)",
             borderRadius: "12px",
           }}
           title="MuJoCo Physics Viewer"
@@ -116,7 +108,7 @@ export default function MjcfViewer() {
             setIsSimulating(!isSimulating);
           }}
           aria-label="Toggle physics"
-          className="absolute flex items-center justify-center text-sm gap-2 text-brand bottom-3 right-3 z-10 bg-card border-none rounded-lg p-2 cursor-pointer hover:bg-highlight transition-all"
+          className="absolute flex items-center justify-center text-sm gap-2 text-brand bottom-3 right-3 z-10 bg-highlight border-none rounded-lg p-2 cursor-pointer hover:bg-highlight transition-all"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

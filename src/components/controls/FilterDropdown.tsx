@@ -1,22 +1,17 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { DM_Mono } from "next/font/google";
-
-const dmMono = DM_Mono({ subsets: ["latin"], weight: "400" });
 
 export interface FilterDropdownProps<T extends string = string> {
   value: T[];
   options: readonly T[];
   onChange: (value: T[]) => void;
-  className?: string;
 }
 
 export default function FilterDropdown<T extends string = string>({
   value,
   options,
   onChange,
-  className,
 }: FilterDropdownProps<T>) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -42,9 +37,7 @@ export default function FilterDropdown<T extends string = string>({
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((prev) => !prev)}
-        className={`${dmMono.className} ${
-          className ?? ""
-        } w-full flex items-center justify-center gap-1 rounded-[5px] border border-[rgba(150,134,18,0.19)] bg-[#FFFBF1] py-3 pr-[3px] pl-[10px]`}
+        className={`font-mono w-full flex items-center justify-center gap-1 rounded-[5px] border border-[rgba(150,134,18,0.19)] bg-[#FFFBF1] py-3 pr-[3px] pl-[10px]`}
       >
         <span className="text-[12px] font-normal leading-normal text-[#968612]">
           Filter{value?.length ? ` (${value.length})` : ""}
@@ -75,9 +68,7 @@ export default function FilterDropdown<T extends string = string>({
 
       {open && (
         <div
-          className={`${dmMono.className} ${
-            className ?? ""
-          } absolute z-50 right-0 mt-2 min-w-[6rem] overflow-hidden rounded-md border border-[rgba(150,134,18,0.19)] bg-[#fefdf7]`}
+          className={`w-full font-mono absolute z-50 right-0 mt-2 min-w-[6rem] overflow-hidden rounded-md border border-[rgba(150,134,18,0.19)] bg-[#fefdf7]`}
         >
           <ul role="listbox">
             {options.map((opt) => {

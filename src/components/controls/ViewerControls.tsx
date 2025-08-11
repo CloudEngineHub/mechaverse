@@ -3,11 +3,8 @@
 import React, { useState, useEffect } from "react";
 import FilterDropdown from "@/components/controls/FilterDropdown";
 import { useRobot } from "@/hooks/useRobot";
-import { DM_Mono } from "next/font/google";
 import RobotCard from "./RobotCard";
 import { ExampleRobot, RobotFileType } from "@/types/robot";
-
-const dmMono = DM_Mono({ subsets: ["latin"], weight: "400" });
 
 interface ViewerControlsProps {
   onUploadClick: () => void;
@@ -70,7 +67,7 @@ export default function ViewerControls({ onUploadClick }: ViewerControlsProps) {
       <div className="w-full grid grid-cols-5 gap-3 mb-3 items-stretch">
         <button
           onClick={onUploadClick}
-          className={`${dmMono.className} col-span-3 w-full h-full flex items-center justify-center gap-2 px-10 py-3 rounded-md bg-[#FBE651] text-[#968612] hover:bg-[#ffb601]/80 transition-all text-xs font-normal leading-normal not-italic`}
+          className={`font-mono col-span-3 w-full h-full flex items-center justify-center gap-2 px-10 py-3 rounded-md bg-[#FBE651] text-[#968612] hover:bg-[#ffb601]/80 transition-all text-xs font-normal leading-normal not-italic`}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -104,12 +101,11 @@ export default function ViewerControls({ onUploadClick }: ViewerControlsProps) {
             value={selectedFileTypes}
             options={["URDF", "MJCF", "USD"] as const}
             onChange={(v) => setSelectedFileTypes(v as RobotFileType[])}
-            className="w-full"
           />
         </div>
       </div>
 
-      <div className="pt-2 flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col gap-4 scrollbar-hidden">
+      <div className="pt-2 flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col gap-4 scrollbar-none">
         {(examples ?? [])
           .filter((ex) => selectedFileTypes.includes(ex.fileType))
           .map((example, index) => {

@@ -1,9 +1,6 @@
 "use client";
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { DM_Mono } from "next/font/google";
-
-const dmMono = DM_Mono({ subsets: ["latin"], weight: "400" });
 
 import { useRobot } from "@/hooks/useRobot";
 import type { ExampleRobot } from "@/types/robot";
@@ -357,10 +354,9 @@ const UrdfViewer: React.FC = () => {
       {/* Joint highlight indicator */}
       {highlightedJoint && (
         <div
-          className={cn(
-            "absolute bottom-4 right-4 text-[#9b8632] px-3 py-2 rounded-md text-sm z-10 flex items-center gap-2",
-            dmMono.className
-          )}
+          className={
+            "font-mono absolute bottom-4 right-4 text-[#9b8632] px-3 py-2 rounded-md text-sm z-10 flex items-center gap-2"
+          }
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

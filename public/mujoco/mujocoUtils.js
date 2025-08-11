@@ -25,19 +25,6 @@ export function setupGUI(parentContext) {
 
   // Add scene selection dropdown.
   let reload = reloadFunc.bind(parentContext);
-  parentContext.gui
-    .add(parentContext.params, "scene", {
-      Humanoid: "humanoid.xml",
-      Cassie: "agility_cassie/scene.xml",
-      Hammock: "hammock.xml",
-      Balloons: "balloons.xml",
-      Hand: "shadow_hand/scene_right.xml",
-      Flag: "flag.xml",
-      Mug: "mug.xml",
-      Tendon: "model_with_tendon.xml",
-    })
-    .name("Example Scene")
-    .onChange(reload);
 
   let simulationFolder = parentContext.gui.addFolder("Simulation");
 
@@ -527,6 +514,7 @@ export async function loadSceneFromURL(mujoco, filename, parent) {
   );
   mujocoRoot.cylinders.receiveShadow = true;
   mujocoRoot.cylinders.castShadow = true;
+  mujocoRoot.cylinders.count = 0; // Hide by default
   mujocoRoot.add(mujocoRoot.cylinders);
   mujocoRoot.spheres = new THREE.InstancedMesh(
     new THREE.SphereGeometry(1, 10, 10),
@@ -535,6 +523,7 @@ export async function loadSceneFromURL(mujoco, filename, parent) {
   );
   mujocoRoot.spheres.receiveShadow = true;
   mujocoRoot.spheres.castShadow = true;
+  mujocoRoot.spheres.count = 0; // Hide by default
   mujocoRoot.add(mujocoRoot.spheres);
 
   // Parse lights.

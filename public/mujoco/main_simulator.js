@@ -1,10 +1,8 @@
 import * as THREE from "three";
-import { GUI } from "three/addons/libs/lil-gui.module.min.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 import { DragStateManager } from "./utils/DragStateManager.js";
 import {
-  setupGUI,
   loadSceneFromURL,
   getPosition,
   getQuaternion,
@@ -41,7 +39,6 @@ export class MujocoSimulator {
     this.lights = [];
     this.tmpVec = new THREE.Vector3();
     this.tmpQuat = new THREE.Quaternion();
-    this.updateGUICallbacks = [];
 
     this.container = document.createElement("div");
     document.body.appendChild(this.container);
@@ -131,8 +128,6 @@ export class MujocoSimulator {
           }
         });
       }
-
-      // Defer GUI creation until a scene is loaded
     } catch (error) {
       console.error("❌ Error in init() method:", error);
       console.error("Stack trace:", error.stack);
@@ -270,15 +265,19 @@ export class MujocoSimulator {
   }
 }
 
+console.log("🚀 MuJoCo Simulator starting up...");
 let demo = new MujocoSimulator();
 await demo.init();
+console.log("✅ Simulator initialized, notifying parent");
 
 // Notify parent when ready (to match render_only)
 window.parent.postMessage({ type: "IFRAME_READY" }, "*");
+console.log("📤 IFRAME_READY message sent to parent");
 
 // Handle messages similar to main_viewer.js with load public scene and reset
 window.addEventListener("message", async (event) => {
   // Received message from parent (sim)
+  console.log("📨 Simulator received message:", event.data.type, event.data);
   try {
     switch (event.data.type) {
       case "RESET_POSE":
@@ -287,22 +286,40 @@ window.addEventListener("message", async (event) => {
           demo.simulation.forward();
         }
         break;
-      case "LOAD_PUBLIC_SCENE":
-        // Load MJCF from public/mjcf on demand with dependencies
-        await ensureMjcfPathWithDependencies(mujoco, event.data.path);
-        [demo.model, demo.state, demo.simulation, demo.bodies, demo.lights] =
-          await loadSceneFromURL(mujoco, event.data.path, demo);
-        // Create GUI now that we have a simulation
-        if (!demo.gui) {
-          demo.gui = new GUI();
-          setupGUI(demo);
+      case "PAUSE_SIMULATION":
+        if (demo?.params) {
+          demo.params.paused = true;
         }
-        demo.simulation.resetData();
-        demo.simulation.forward();
-        window.parent.postMessage(
-          { type: "SCENE_LOADED", sceneName: event.data.path },
-          "*"
-        );
+        break;
+      case "RESUME_SIMULATION":
+        if (demo?.params) {
+          demo.params.paused = false;
+        }
+        break;
+      case "LOAD_PUBLIC_SCENE":
+        console.log("📂 Loading public scene:", event.data.path);
+        try {
+          // Load MJCF from public/mjcf on demand with dependencies
+          await ensureMjcfPathWithDependencies(mujoco, event.data.path);
+          console.log("✅ Dependencies loaded, loading scene from URL");
+          [demo.model, demo.state, demo.simulation, demo.bodies, demo.lights] =
+            await loadSceneFromURL(mujoco, event.data.path, demo);
+          console.log("✅ Scene loaded successfully");
+          // No GUI setup - controls handled by parent
+          demo.simulation.resetData();
+          demo.simulation.forward();
+          console.log("✅ Scene reset and forwarded");
+          window.parent.postMessage(
+            { type: "SCENE_LOADED", sceneName: event.data.path },
+            "*"
+          );
+        } catch (sceneError) {
+          console.error("❌ Error loading scene:", sceneError);
+          window.parent.postMessage(
+            { type: "ERROR", error: sceneError.message },
+            "*"
+          );
+        }
         break;
       case "LOAD_XML_CONTENT":
         mujoco.FS.writeFile(

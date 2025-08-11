@@ -14,6 +14,8 @@ interface ViewerControlsProps {
 export default function ViewerControls({ onUploadClick }: ViewerControlsProps) {
   const [selectedFileTypes, setSelectedFileTypes] = useState<RobotFileType[]>([
     "URDF",
+    "MJCF",
+    "USD",
   ]);
   const [examples, setExamples] = useState<ExampleRobot[]>();
   const {

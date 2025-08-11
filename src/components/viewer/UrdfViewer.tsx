@@ -16,6 +16,7 @@ import * as THREE from "three";
 
 // Dynamic import for URDFManipulator to avoid SSR issues
 let URDFManipulator: typeof HTMLElement | null = null;
+const defaultUrdfPath = "/urdf/cassie/cassie.urdf";
 
 // Register the URDFManipulator as a custom element (idempotent and race-safe)
 const registerURDFManipulator = async () => {
@@ -128,7 +129,6 @@ const UrdfViewer: React.FC = () => {
       setupMeshLoader(viewer, urlModifierFunc);
 
       // Resolve selected robot path (owner/repo) or default to SO-100
-      const defaultUrdfPath = "/urdf/so-100/so_100.urdf";
       let urdfPath = defaultUrdfPath;
       if (examples && activeRobotOwner && activeRobotName) {
         const match = examples.find(

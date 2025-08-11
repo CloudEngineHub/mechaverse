@@ -1,4 +1,5 @@
 import { ExampleRobot } from "@/types/robot";
+import Image from "next/image";
 
 interface RobotCardProps {
   index: number;
@@ -23,8 +24,13 @@ export default function RobotCard({
     >
       <div className="flex items-left items-center justify-between gap-2">
         <div className="flex items-center gap-1">
-          <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center mr-3">
-            <span className="text-gray-400 text-xl">🦾</span>
+          <div className="w-10 h-10 rounded flex items-center justify-center mr-3">
+            <Image
+              src={example.imagePath!}
+              alt={example.display_name}
+              width={256}
+              height={200}
+            />
           </div>
           <span
             className={`font-mono text-[#968612] text-[1rem] not-italic font-normal leading-normal`}

@@ -12,15 +12,16 @@ function Inner() {
   useEffect(() => {
     // Read query on client only
     const params = new URLSearchParams(window.location.search);
-    const r = params.get("robot") || "SO-100";
-    setActiveRobotOwner(r);
+    const r = params.get("robot");
+    setActiveRobotOwner("placeholder");
+    setActiveRobotName(r);
     const map: Record<string, string> = {
       cassie: "/urdf/cassie/cassie.urdf",
       "SO-100": "/urdf/so-100/so_100.urdf",
       "Anymal B": "/urdf/anymal-b/anymal.urdf",
     };
-    setExpectedPath(map[r] || map["SO-100"]);
-  }, [setActiveRobotOwner]);
+    setExpectedPath(map[r!]);
+  }, [setActiveRobotOwner, setActiveRobotName]);
 
   useEffect(() => {
     // Wait for the correct robot to finish processing, then capture

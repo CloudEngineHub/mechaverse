@@ -4,62 +4,71 @@
     "owner": "placeholder",
     "repo_name": "cassie",
     "fileType": "URDF",
-    "path": "/urdf/cassie/cassie.urdf"
+    "path": "/urdf/cassie/cassie.urdf",
+    "imagePath": "/urdf/cassie/cassie.png"
   },
   {
     "display_name": "SO-100",
     "owner": "placeholder",
     "repo_name": "so-100",
     "fileType": "URDF",
-    "path": "/urdf/so-100/so_100.urdf"
+    "path": "/urdf/so-100/so_100.urdf",
+    "imagePath": "/urdf/so-100/so_100.png"
   },
   {
     "display_name": "Anymal B",
     "owner": "placeholder",
     "repo_name": "anymal-b",
     "fileType": "URDF",
-    "path": "/urdf/anymal-b/anymal.urdf"
+    "path": "/urdf/anymal-b/anymal.urdf",
+    "imagePath": "/urdf/anymal-b/anymal.png"
   },
   {
     "display_name": "Humanoid",
     "owner": "placeholder",
     "repo_name": "humanoid",
     "fileType": "MJCF",
-    "path": "/mjcf/humanoid/humanoid.xml"
+    "path": "/mjcf/humanoid/humanoid.xml",
+    "imagePath": "/mjcf/humanoid/humanoid.png"
   },
   {
     "display_name": "Cassie Metal",
     "owner": "placeholder",
     "repo_name": "cassie-metal",
     "fileType": "MJCF",
-    "path": "/mjcf/cassie/cassie.xml"
+    "path": "/mjcf/cassie/cassie.xml",
+    "imagePath": "/mjcf/cassie/cassie.png"
   },
   {
     "display_name": "Shadow Hand",
     "owner": "placeholder",
     "repo_name": "shadow-hand",
     "fileType": "MJCF",
-    "path": "/mjcf/shadow_hand/right_hand.xml"
+    "path": "/mjcf/shadow_hand/right_hand.xml",
+    "imagePath": "/mjcf/shadow_hand/shadow_hand.png"
   },
   {
     "display_name": "Lelamp",
     "owner": "placeholder",
     "repo_name": "lelamp",
     "fileType": "MJCF",
-    "path": "/mjcf/lelamp/robot.xml"
+    "path": "/mjcf/lelamp/robot.xml",
+    "imagePath": "/mjcf/lelamp/lelamp.png"
   },
   {
     "display_name": "Bike",
     "owner": "placeholder",
     "repo_name": "bike",
     "fileType": "USD",
-    "path": "/usd/bike/CarbonFrameBike.usdz"
+    "path": "/usd/bike/CarbonFrameBike.usdz",
+    "imagePath": "/usd/bike/bike.png"
   },
   {
     "display_name": "Minecraft",
     "owner": "placeholder",
     "repo_name": "minecraft",
     "fileType": "USD",
-    "path": "/usd/minecraft/McUsd.usda"
+    "path": "/usd/minecraft/McUsd.usda",
+    "imagePath": "/usd/minecraft/minecraft.png"
   }
 ]

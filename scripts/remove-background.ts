@@ -138,12 +138,8 @@ async function removeBackgroundFromPng(
     }
   }
 
-  // Build a sharp instance and center-crop to square of cropSize, preserving original center
-  const size = Math.min(cropSize, width, height);
-  const left = Math.max(0, Math.floor(width / 2 - size / 2));
-  const top = Math.max(0, Math.floor(height / 2 - size / 2));
+  // Preserve original dimensions without cropping
   await sharp(data, { raw: { width, height, channels: 4 } })
-    .extract({ left, top, width: size, height: size })
     .png()
     .toFile(outputPath);
 }

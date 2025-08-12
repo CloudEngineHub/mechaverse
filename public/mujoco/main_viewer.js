@@ -410,6 +410,70 @@ window.addEventListener("message", async (event) => {
         break;
       }
 
+      case "LOAD_MJCF_FILES_MAP": {
+        try {
+          const entries = event.data.entries || [];
+          const ensureDir = (fullPath) => {
+            const parts = fullPath.split("/");
+            let acc = "";
+            for (let i = 0; i < parts.length - 1; i++) {
+              acc += (i === 0 ? "" : "/") + parts[i];
+              if (!mujoco.FS.analyzePath(acc).exists) mujoco.FS.mkdir(acc);
+            }
+          };
+          for (const { path, buffer } of entries) {
+            const relPath = path.startsWith("/") ? path.slice(1) : path;
+            const vfsPath = "/working/" + relPath;
+            ensureDir(vfsPath);
+            const bytes =
+              buffer instanceof ArrayBuffer
+                ? new Uint8Array(buffer)
+                : new Uint8Array();
+            mujoco.FS.writeFile(vfsPath, bytes);
+          }
+          window.parent.postMessage({ type: "MJCF_FILES_WRITTEN" }, "*");
+        } catch (e) {
+          window.parent.postMessage({ type: "ERROR", error: String(e) }, "*");
+        }
+        break;
+      }
+
+      case "LOAD_MJCF_ROOT": {
+        try {
+          const rel = (event.data.path || "").replace(/^\/+/, "");
+          removeAllMujocoRoots(viewer);
+          [
+            viewer.model,
+            viewer.state,
+            viewer.simulation,
+            viewer.bodies,
+            viewer.lights,
+          ] = await loadSceneFromURL(mujoco, rel, viewer);
+
+          if (!viewer.jointDragManager && viewer.simulation) {
+            viewer.jointDragManager = new JointDragManager(
+              viewer.scene,
+              viewer.renderer,
+              viewer.camera,
+              viewer.container,
+              viewer.controls,
+              viewer.simulation
+            );
+          } else if (viewer.jointDragManager) {
+            viewer.jointDragManager.simulation = viewer.simulation;
+          }
+          viewer.simulation.resetData();
+          viewer.simulation.forward();
+          window.parent.postMessage(
+            { type: "SCENE_LOADED", sceneName: rel },
+            "*"
+          );
+        } catch (e) {
+          window.parent.postMessage({ type: "ERROR", error: String(e) }, "*");
+        }
+        break;
+      }
+
       case "SET_TRANSPARENT_BACKGROUND": {
         try {
           // Ensure transparent canvas

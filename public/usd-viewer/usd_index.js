@@ -38,8 +38,8 @@ export function init(
     let handle = null;
 
     const run = () => {
-      let scene;
-      let defaultTexture;
+      let scene; // retained for future extensions
+      let defaultTexture; // retained for future extensions
       let USD;
       // Resolve when USD module is ready so drop-handling can await it
       let resolveUsdReady;
@@ -50,7 +50,6 @@ export function init(
       const debugFileHandling = false;
 
       let params = new URL(document.location).searchParams;
-      let name = params.get("name");
 
       let filename = params.get("file") || "";
       let currentDisplayFilename = "";
@@ -69,7 +68,9 @@ export function init(
         // set quick look link (removed DOM dependency)
         let indexOfQuery = filename.indexOf("?");
         let url = filename;
-        if (indexOfQuery >= 0) url = url.substring(0, indexOfQuery);
+        if (indexOfQuery >= 0) {
+          url = url.substring(0, indexOfQuery);
+        }
 
         const currentUrl = new URL(window.location.href);
         // set the file query parameter
@@ -517,7 +518,7 @@ export function init(
       }
 
       function render() {
-        const time = Date.now() * 0.001;
+        // const time = Date.now() * 0.001;
         if (window.renderer.render && window.scene) {
           window.renderer.render(window.scene, window.camera);
         }
@@ -554,13 +555,14 @@ export function init(
                 console.warn("directory", directory, "fileName", fileName);
             }
             USD.FS_createPath("", directory, true, true);
+            // Mount file as read-only to prevent USD from attempting write-backs to packages
             USD.FS_createDataFile(
               directory,
               fileName,
               new Uint8Array(event.target.result),
-              true,
-              true,
-              true
+              true /* canRead */,
+              false /* canWrite */,
+              true /* canOwn */
             );
 
             loadUsdFile(directory, fileName, fullPath, isRootFile);
@@ -607,7 +609,7 @@ export function init(
          */
         let getEntries = async (directory) => {
           let dirReader = directory.createReader();
-          await new Promise(async (resolve, reject) => {
+          await new Promise(async (resolve) => {
             // Call the reader.readEntries() until no more results are returned.
 
             const results = await getAllDirectoryEntries(dirReader);
@@ -911,6 +913,51 @@ export function init(
             for (const file of fileArray) testAndLoadFile(file);
           } catch (e) {
             console.warn("loadFromFiles error", e);
+            onStatus("Error: " + e);
+          }
+        },
+        // Load from a map of virtual paths -> File, with an optional primary root file path
+        loadFromFilesMap: async (filesMap, primaryPath) => {
+          try {
+            if (!USD) await usdReady;
+            clearStage();
+            const entries = Object.entries(filesMap).filter(([p]) => {
+              // Ignore OS junk files
+              const base = p.split("/").pop() || p;
+              return base !== ".DS_Store" && !base.startsWith("._");
+            });
+            onStatus("Loading local USD files...");
+            // Load all non-root files first
+            for (const [fullPath, file] of entries) {
+              if (primaryPath && fullPath === primaryPath) continue;
+              await loadFile(file, false, fullPath);
+            }
+            // Then load the primary/root if provided, else try to detect
+            if (primaryPath && filesMap[primaryPath]) {
+              onStatus("Loading root USD...");
+              await loadFile(filesMap[primaryPath], true, primaryPath);
+              onStatus("");
+              return;
+            }
+            // Detect a reasonable root (prefer .usda)
+            const sorted = entries
+              .map(([p, f]) => [p, f])
+              .sort((a, b) => a[0].split("/").length - b[0].split("/").length);
+            let root = undefined;
+            for (const [p, f] of sorted) {
+              const ext = p.split(".").pop();
+              if (["usda", "usdc", "usdz", "usd"].includes(ext)) {
+                root = [p, f];
+                if (ext === "usda") break;
+              }
+            }
+            if (root) {
+              onStatus("Loading root USD...");
+              await loadFile(root[1], true, root[0]);
+              onStatus("");
+            }
+          } catch (e) {
+            console.warn("loadFromFilesMap error", e);
             onStatus("Error: " + e);
           }
         },

@@ -2,10 +2,13 @@ import { getMimeType } from "@/lib/utils";
 
 /**
  * Converts a DataTransfer structure into an object with all paths and files.
+ * This supports folders dropped via the non-standard DirectoryEntry API
+ * (webkitGetAsEntry / getAsEntry) as implemented by Chromium/WebKit.
+ *
  * @param dataTransfer The DataTransfer object from the drop event
  * @returns A promise that resolves with the file structure object
  */
-function dataTransferToFiles(
+export function dataTransferToFiles(
   dataTransfer: DataTransfer
 ): Promise<Record<string, File>> {
   if (!(dataTransfer instanceof DataTransfer)) {
@@ -185,30 +188,10 @@ function createUrlResolverForProcessor(
 }
 
 /**
- * Reads the content of a URDF file
- * @param file The URDF file object
- * @returns A promise that resolves with the content of the file as a string
+ * Core function to process URDF files from a files map
  */
-export function readUrdfFileContent(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target && event.target.result) {
-        resolve(event.target.result as string);
-      } else {
-        reject(new Error("Failed to read URDF file content"));
-      }
-    };
-    reader.onerror = () => reject(new Error("Error reading URDF file"));
-    reader.readAsText(file);
-  });
-}
-
-/**
- * Processes dropped files and returns information about available URDF models
- */
-export async function processDroppedFiles(
-  dataTransfer: DataTransfer,
+async function processUrdfFilesCore(
+  files: Record<string, File>,
   urdfProcessor: UrdfProcessor
 ): Promise<{
   files: Record<string, File>;
@@ -217,9 +200,6 @@ export async function processDroppedFiles(
 }> {
   // Reset the package reference
   packageRef.current = "";
-
-  // Convert dropped files into a structured format
-  const files = await dataTransferToFiles(dataTransfer);
 
   // Get all file paths and clean them
   const fileNames = Object.keys(files).map((n) => cleanFilePath(n));
@@ -230,17 +210,23 @@ export async function processDroppedFiles(
   // Create blob URLs for URDF files
   const blobUrls: Record<string, string> = {};
   availableModels.forEach((path) => {
-    blobUrls[path] = URL.createObjectURL(files[path]);
+    if (files[path]) {
+      blobUrls[path] = URL.createObjectURL(files[path]);
+    }
   });
 
   // Extract the package base path from the first URDF model for reference
-  let packageBasePath = "";
+  let packageBasePath = "/";
   if (availableModels.length > 0) {
-    // Extract the main directory path (e.g., '/cassie_description/')
-    const firstModel = availableModels[0];
-    const packageMatch = firstModel.match(/^(\/[^/]+\/)/);
-    if (packageMatch && packageMatch[1]) {
-      packageBasePath = packageMatch[1];
+    const firstModelPath = availableModels[0];
+    const lastSlashIdx = firstModelPath.lastIndexOf("/");
+    if (lastSlashIdx > 0) {
+      packageBasePath = firstModelPath.substring(0, lastSlashIdx + 1);
+    } else if (lastSlashIdx === 0) {
+      packageBasePath = "/";
+    }
+    if (!packageBasePath.endsWith("/")) {
+      packageBasePath += "/";
     }
   }
 
@@ -249,79 +235,25 @@ export async function processDroppedFiles(
     createUrlResolverForProcessor(files, fileNames, packageBasePath)
   );
 
-  return {
-    files,
-    availableModels,
-    blobUrls,
-  };
+  return { files, availableModels, blobUrls };
 }
 
 /**
- * Processes selected files from a file input and returns information about available URDF models
+ * Processes a generic files record and returns information about available URDF models
  */
-export async function processSelectedFiles(
-  fileList: FileList,
+export async function processFilesRecord(
+  filesRecord: Record<string, File>,
   urdfProcessor: UrdfProcessor
 ): Promise<{
   files: Record<string, File>;
   availableModels: string[];
   blobUrls: Record<string, string>;
 }> {
-  // Reset the package reference
-  packageRef.current = "";
-
-  // Convert FileList to a structured format using webkitRelativePath
+  // Clone and normalize keys
   const files: Record<string, File> = {};
-  Array.from(fileList).forEach((file) => {
-    const relativePath = file.webkitRelativePath || file.name;
-    // Ensure the path starts with a single slash and is cleaned
-    const fullPath = "/" + relativePath.replace(/^\/+/, "");
-    files[cleanFilePath(fullPath)] = file;
+  Object.entries(filesRecord).forEach(([k, f]) => {
+    const normalized = cleanFilePath(k.startsWith("/") ? k : "/" + k);
+    files[normalized] = f;
   });
-
-  // Get all file paths (these are already cleaned from the step above)
-  const fileNames = Object.keys(files);
-
-  // Filter all files ending in URDF
-  const availableModels = fileNames.filter((n) => /urdf$/i.test(n));
-
-  // Create blob URLs for URDF files
-  const blobUrls: Record<string, string> = {};
-  availableModels.forEach((path) => {
-    if (files[path]) {
-      // Ensure file exists for the path
-      blobUrls[path] = URL.createObjectURL(files[path]);
-    }
-  });
-
-  // Extract the package base path from the first URDF model for reference
-  let packageBasePath = "/"; // Default to root if no models or specific path found
-  if (availableModels.length > 0) {
-    const firstModelPath = availableModels[0]; // e.g., /my_robot_package/robot.urdf
-    const lastSlashIdx = firstModelPath.lastIndexOf("/");
-    if (lastSlashIdx > 0) {
-      // Handles paths like /foo/bar.urdf
-      packageBasePath = firstModelPath.substring(0, lastSlashIdx + 1); // e.g., /my_robot_package/
-    } else if (lastSlashIdx === 0) {
-      // Handles paths like /bar.urdf
-      packageBasePath = "/";
-    }
-    // Ensure it's a directory path (ends with /)
-    if (!packageBasePath.endsWith("/")) {
-      packageBasePath += "/";
-    }
-  }
-
-  // Package base path determined
-
-  // Store the package path for future reference and set URL modifier
-  urdfProcessor.setUrlModifierFunc(
-    createUrlResolverForProcessor(files, fileNames, packageBasePath)
-  );
-
-  return {
-    files,
-    availableModels,
-    blobUrls,
-  };
+  return processUrdfFilesCore(files, urdfProcessor);
 }

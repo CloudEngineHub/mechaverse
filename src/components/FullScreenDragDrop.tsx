@@ -2,10 +2,8 @@
 
 import React from "react";
 import clsx from "clsx";
-import {
-  DragAndDropProvider,
-  useDragAndDrop,
-} from "@/contexts/DragAndDropContext";
+import { DragAndDropProvider } from "@/contexts/DragAndDropContext";
+import { useDragAndDrop } from "@/hooks/useDragAndDrop";
 
 interface FullScreenDragDropProps {
   onClose: () => void;
@@ -104,7 +102,7 @@ export default function FullScreenDragDrop({
 }: FullScreenDragDropProps) {
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-      <DragAndDropProvider onFilesProcessed={onClose}>
+      <DragAndDropProvider onComplete={onClose}>
         <DropModalCard onClose={onClose} />
       </DragAndDropProvider>
     </div>

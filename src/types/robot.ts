@@ -29,6 +29,16 @@ export interface RobotFileModel {
   name?: string;
 }
 
+export type RobotFilesPayload = {
+  owner: string;
+  name: string;
+  files: Record<string, File>;
+  primary: {
+    type: RobotFileType;
+    path: string; // key in files map (normalized, leading '/')
+  };
+};
+
 export type RobotFileType = "URDF" | "MJCF" | "USD";
 
 export interface ExampleRobot {

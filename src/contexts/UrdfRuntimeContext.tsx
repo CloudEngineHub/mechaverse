@@ -1,25 +1,19 @@
 "use client";
 
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-} from "react";
+import React, { createContext, useCallback, useEffect, useRef } from "react";
+import { UrdfProcessor, processFilesRecord } from "@/lib/robotUploadSupport";
 import {
-  UrdfProcessor,
-  processDroppedFiles,
-  processSelectedFiles,
-} from "@/lib/robotUploadSupport";
+  subscribeRobotFilesUpload,
+  consumeLastRobotFilesUpload,
+} from "@/lib/robotFilesEvents";
 
-type UrdfRuntimeContextType = {
+export type UrdfRuntimeContextType = {
   registerUrdfProcessor: (processor: UrdfProcessor) => void;
 };
 
-const UrdfRuntimeContext = createContext<UrdfRuntimeContextType | undefined>(
-  undefined
-);
+export const UrdfRuntimeContext = createContext<
+  UrdfRuntimeContextType | undefined
+>(undefined);
 
 export const UrdfRuntimeProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -54,45 +48,26 @@ export const UrdfRuntimeProvider: React.FC<{ children: React.ReactNode }> = ({
     []
   );
 
-  // Localize drag-and-drop inputs via a small event bus so we don't need
-  // this provider at the page level.
+  // Handle unified robot files uploads
   useEffect(() => {
     let mounted = true;
-    import("@/lib/urdfEvents").then(
-      ({
-        subscribeUrdfDataTransfer,
-        subscribeUrdfFileList,
-        consumeLastUrdfDataTransfer,
-        consumeLastUrdfFileList,
-      }) => {
-        if (!mounted) return;
 
-        // Consume any pending payloads before subscription
-        const pendingDT = consumeLastUrdfDataTransfer();
-        if (pendingDT) {
-          loadFirstModel((p) => processDroppedFiles(pendingDT, p));
-        }
-        const pendingFL = consumeLastUrdfFileList();
-        if (pendingFL) {
-          loadFirstModel((p) => processSelectedFiles(pendingFL, p));
-        }
+    // Consume any pending payloads before subscription
+    const pending = consumeLastRobotFilesUpload?.();
+    if (pending && pending.primary?.type === "URDF") {
+      loadFirstModel((p) => processFilesRecord(pending.files, p));
+    }
 
-        const unsubDT = subscribeUrdfDataTransfer((dt) => {
-          loadFirstModel((p) => processDroppedFiles(dt, p));
-        });
-        const unsubFL = subscribeUrdfFileList((fl) => {
-          loadFirstModel((p) => processSelectedFiles(fl, p));
-        });
-
-        return () => {
-          unsubDT();
-          unsubFL();
-        };
+    const unsubscribe = subscribeRobotFilesUpload?.((payload) => {
+      if (!mounted) return;
+      if (payload.primary?.type === "URDF") {
+        loadFirstModel((p) => processFilesRecord(payload.files, p));
       }
-    );
+    });
 
     return () => {
       mounted = false;
+      unsubscribe && unsubscribe();
     };
   }, [loadFirstModel]);
 
@@ -102,10 +77,3 @@ export const UrdfRuntimeProvider: React.FC<{ children: React.ReactNode }> = ({
     </UrdfRuntimeContext.Provider>
   );
 };
-
-export function useUrdfRuntime(): UrdfRuntimeContextType {
-  const ctx = useContext(UrdfRuntimeContext);
-  if (!ctx)
-    throw new Error("useUrdfRuntime must be used within UrdfRuntimeProvider");
-  return ctx;
-}

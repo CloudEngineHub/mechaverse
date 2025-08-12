@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 import { useRobot } from "@/hooks/useRobot";
 import type { ExampleRobot } from "@/types/robot";
-import { useUrdfRuntime } from "@/contexts/UrdfRuntimeContext";
+import { useUrdfRuntime } from "@/hooks/useUrdfRuntime";
 import {
   createUrdfViewer,
   setupMeshLoader,
@@ -19,7 +19,7 @@ let URDFManipulator: typeof HTMLElement | null = null;
 const defaultUrdfPath = "/urdf/cassie/cassie.urdf";
 
 // Register the URDFManipulator as a custom element (idempotent and race-safe)
-const registerURDFManipulator = async () => {
+const registerUrdfManipulator = async () => {
   if (typeof window === "undefined") return;
   const w = window as Window & { __urdfViewerRegistered?: boolean };
   if (customElements.get("urdf-viewer") || w.__urdfViewerRegistered) return;
@@ -120,7 +120,7 @@ const UrdfViewer: React.FC = () => {
     const cleanupFunctions: (() => void)[] = [];
 
     // Register the URDF manipulator first, then setup the viewer
-    registerURDFManipulator().then(() => {
+    registerUrdfManipulator().then(() => {
       // Create and configure the URDF viewer element
       const viewer = createUrdfViewer(containerRef.current!);
       viewerRef.current = viewer; // Store reference to the viewer

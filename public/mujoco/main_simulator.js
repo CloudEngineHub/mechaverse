@@ -56,14 +56,28 @@ export class MujocoSimulator {
     this.camera.position.set(2.0, 1.7, 1.7);
     this.scene.add(this.camera);
 
-    this.scene.background = new THREE.Color(0xeeeeee);
+    // Default theme consistent with viewer
+    this.theme = {
+      sceneBg: "#fef4da",
+      floor: "#fcf4dc",
+      ambient: "#fcf4dc",
+      hemi: "#fcf4dc",
+    };
+    this.scene.background = new THREE.Color(this.theme.sceneBg);
 
-    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.35);
+    this.ambientLight = new THREE.AmbientLight(
+      new THREE.Color(this.theme.ambient),
+      0.35
+    );
     this.ambientLight.name = "AmbientLight";
     this.scene.add(this.ambientLight);
 
     // Uniform hemisphere fill light
-    this.hemiLight = new THREE.HemisphereLight(0xe8f0ff, 0xf2e8d0, 0.3);
+    this.hemiLight = new THREE.HemisphereLight(
+      new THREE.Color(this.theme.hemi),
+      new THREE.Color(this.theme.hemi),
+      0.3
+    );
     this.hemiLight.position.set(0, 1, 0);
     this.hemiLight.name = "HemisphereLight";
     this.scene.add(this.hemiLight);
@@ -107,7 +121,7 @@ export class MujocoSimulator {
     try {
       // Defer loading; parent will request a scene
 
-      this.scene.background = new THREE.Color(0xeeeeee);
+      this.scene.background = new THREE.Color(this.theme.sceneBg);
 
       const mujocoRoot = this.scene.getObjectByName("MuJoCo Root");
       if (mujocoRoot) {
@@ -118,7 +132,7 @@ export class MujocoSimulator {
               obj.constructor.name === "Reflector"
             ) {
               if (obj.material && obj.material.color) {
-                obj.material.color.set(0xdddddd);
+                obj.material.color.set(this.theme.floor);
                 obj.material.map = null;
                 obj.material.reflectivity = 0;
                 obj.material.metalness = 0;
@@ -272,12 +286,10 @@ console.log("✅ Simulator initialized, notifying parent");
 
 // Notify parent when ready (to match render_only)
 window.parent.postMessage({ type: "IFRAME_READY" }, "*");
-console.log("📤 IFRAME_READY message sent to parent");
 
 // Handle messages similar to main_viewer.js with load public scene and reset
 window.addEventListener("message", async (event) => {
   // Received message from parent (sim)
-  console.log("📨 Simulator received message:", event.data.type, event.data);
   try {
     switch (event.data.type) {
       case "RESET_POSE":

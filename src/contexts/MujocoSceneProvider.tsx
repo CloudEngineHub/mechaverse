@@ -3,7 +3,6 @@
 import React, {
   createContext,
   useCallback,
-  useContext,
   useRef,
   useState,
   useEffect,
@@ -16,30 +15,7 @@ import {
   subscribeRobotFilesUpload,
   consumeLastRobotFilesUpload,
 } from "@/lib/robotFilesEvents";
-
-type MujocoMessage =
-  | { type: "LOAD_PUBLIC_SCENE"; path: string }
-  | { type: "LOAD_XML_CONTENT"; fileName: string; content: string }
-  | { type: "RESET_POSE" }
-  | { type: "SET_TRANSPARENT_BACKGROUND" }
-  | { type: "FIT_ISO" }
-  | { type: "PAUSE_SIMULATION" }
-  | { type: "RESUME_SIMULATION" }
-  | {
-      type: "SET_THEME";
-      sceneBg?: string;
-      floor?: string;
-      ambient?: string;
-      hemi?: string;
-    };
-// Extended messages handled by the iframe viewer implementation
-type MujocoExtendedMessage =
-  | MujocoMessage
-  | {
-      type: "LOAD_MJCF_FILES_MAP";
-      entries: { path: string; buffer: ArrayBuffer }[];
-    }
-  | { type: "LOAD_MJCF_ROOT"; path: string };
+import { MujocoMessage } from "@/types/mujoco";
 
 type MujocoSceneContextType = {
   registerIframeWindow: (win: Window | null) => void;
@@ -49,21 +25,11 @@ type MujocoSceneContextType = {
   resetPose: () => void;
   pauseSimulation: () => void;
   resumeSimulation: () => void;
-  setTransparentBackground: () => void;
-  fitIsometric: () => void;
-  setTheme: (
-    theme: Partial<{
-      sceneBg: string;
-      floor: string;
-      ambient: string;
-      hemi: string;
-    }>
-  ) => void;
 };
 
-const MujocoSceneContext = createContext<MujocoSceneContextType | undefined>(
-  undefined
-);
+export const MujocoSceneContext = createContext<
+  MujocoSceneContextType | undefined
+>(undefined);
 
 export const MujocoSceneProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -73,21 +39,17 @@ export const MujocoSceneProvider: React.FC<{ children: React.ReactNode }> = ({
   const pendingSceneRef = useRef<string | null>(null);
   const pendingXmlRef = useRef<{ name: string; content: string } | null>(null);
   const [currentScenePath, setCurrentScenePath] = useState<string | null>(null);
+  const currentScenePathRef = useRef<string | null>(null);
   const { examples } = useExampleRobots();
 
-  const post = useCallback((data: MujocoExtendedMessage) => {
+  const post = useCallback((data: MujocoMessage) => {
     const target = iframeWindowRef.current;
-    console.log("📤 Posting message:", data.type, {
-      hasTarget: !!target,
-      data,
-    });
     if (!target) {
       console.warn("❌ No iframe window to post message to");
       return;
     }
     try {
       target.postMessage(data, "*");
-      console.log("✅ Message posted successfully");
     } catch (e) {
       console.warn("❌ Failed to post message to iframe", e);
     }
@@ -95,21 +57,13 @@ export const MujocoSceneProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const registerIframeWindow = useCallback(
     (win: Window | null) => {
-      console.log("🔄 Registering iframe window", {
-        win: !!win,
-        currentScenePath,
-        pendingScene: pendingSceneRef.current,
-        pendingXml: pendingXmlRef.current?.name,
-      });
       iframeWindowRef.current = win ?? null;
       if (win) {
         if (pendingSceneRef.current) {
-          console.log("📂 Loading pending scene:", pendingSceneRef.current);
           post({ type: "LOAD_PUBLIC_SCENE", path: pendingSceneRef.current });
           pendingSceneRef.current = null;
         }
         if (pendingXmlRef.current) {
-          console.log("📄 Loading pending XML:", pendingXmlRef.current.name);
           post({
             type: "LOAD_XML_CONTENT",
             fileName: pendingXmlRef.current.name,
@@ -117,16 +71,16 @@ export const MujocoSceneProvider: React.FC<{ children: React.ReactNode }> = ({
           });
           pendingXmlRef.current = null;
         }
-        // If we already have a current scene, re-post it for a fresh iframe
-        if (currentScenePath) {
-          console.log("🔄 Reloading current scene:", currentScenePath);
-          post({ type: "LOAD_PUBLIC_SCENE", path: currentScenePath });
-        } else {
-          console.log("⚠️ No current scene to reload");
+        // If we already have a current scene, re-post it for a fresh iframe (e.g., when switching viewer/simulator)
+        if (currentScenePathRef.current) {
+          post({
+            type: "LOAD_PUBLIC_SCENE",
+            path: currentScenePathRef.current,
+          });
         }
       }
     },
-    [post, currentScenePath]
+    [post]
   );
 
   const loadPublicScene = useCallback(
@@ -173,27 +127,12 @@ export const MujocoSceneProvider: React.FC<{ children: React.ReactNode }> = ({
     post({ type: "RESUME_SIMULATION" });
   }, [post]);
 
-  const setTransparentBackground = useCallback(() => {
-    post({ type: "SET_TRANSPARENT_BACKGROUND" });
-  }, [post]);
+  // Keep a stable ref of the current scene
+  useEffect(() => {
+    currentScenePathRef.current = currentScenePath;
+  }, [currentScenePath]);
 
-  const fitIsometric = useCallback(() => {
-    post({ type: "FIT_ISO" });
-  }, [post]);
-
-  const setTheme = useCallback(
-    (
-      theme: Partial<{
-        sceneBg: string;
-        floor: string;
-        ambient: string;
-        hemi: string;
-      }>
-    ) => {
-      post({ type: "SET_THEME", ...theme });
-    },
-    [post]
-  );
+  // Theme control removed; defaults are used in the iframe
 
   // examples are provided by context
 
@@ -250,35 +189,26 @@ export const MujocoSceneProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     });
     return unsubscribe ?? (() => {});
-  }, [activeRobotType, loadXmlContent]);
+  }, [activeRobotType, loadXmlContent, post]);
 
   // Resolve current MJCF example selection and load scene
   const selectedExample = useMemo(() => {
-    console.log("🔍 Checking selected example:", {
-      hasExamples: !!examples,
-      activeRobotType,
-      activeRobotOwner,
-      activeRobotName,
-    });
     if (!examples || activeRobotType !== "MJCF") {
-      console.log("❌ No examples or robot type is not MJCF");
+      console.warn("❌ No examples or robot type is not MJCF");
       return null;
     }
     const found = examples.find(
       (e) => e.owner === activeRobotOwner && e.repo_name === activeRobotName
     );
-    console.log("🔍 Selected example:", found);
     return found;
   }, [examples, activeRobotType, activeRobotOwner, activeRobotName]);
 
   useEffect(() => {
-    console.log("🔄 Selected example effect:", selectedExample);
     if (!selectedExample || !selectedExample.path) {
-      console.log("❌ No selected example or path");
+      console.warn("❌ No selected example or path");
       return;
     }
     const rel = selectedExample.path.replace("/mjcf/", "");
-    console.log("📂 Loading scene from selected example:", rel);
     loadPublicScene(rel);
   }, [selectedExample, loadPublicScene]);
 
@@ -292,19 +222,10 @@ export const MujocoSceneProvider: React.FC<{ children: React.ReactNode }> = ({
         resetPose,
         pauseSimulation,
         resumeSimulation,
-        setTransparentBackground,
-        fitIsometric,
-        setTheme,
+        // no theme setter exposed
       }}
     >
       {children}
     </MujocoSceneContext.Provider>
   );
 };
-
-export function useMujocoScene() {
-  const ctx = useContext(MujocoSceneContext);
-  if (!ctx)
-    throw new Error("useMujocoScene must be used within MujocoSceneProvider");
-  return ctx;
-}

@@ -1,18 +1,13 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { useMujocoScene } from "@/contexts/MujocoSceneProvider";
+import { useMujocoScene } from "@/hooks/useMujocoScene";
 import { useRobot } from "@/hooks/useRobot";
 import { RotateCcw, Play, Square, Pause } from "lucide-react";
 
 export default function MjcfViewer() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const {
-    registerIframeWindow,
-    resetPose,
-    setTheme,
-    pauseSimulation,
-    resumeSimulation,
-  } = useMujocoScene();
+  const { registerIframeWindow, resetPose, pauseSimulation, resumeSimulation } =
+    useMujocoScene();
   const {
     activeRobotType,
     setActiveRobotType,
@@ -52,51 +47,31 @@ export default function MjcfViewer() {
     };
 
     const handleMessage = (event: MessageEvent) => {
-      if (event.source !== iframe.contentWindow) {
-        return;
-      }
-      switch (event.data.type) {
-        case "SCENE_LOADED":
+      if (event.source !== iframe.contentWindow) return;
+      switch (event.data?.type) {
+        case "IFRAME_READY": {
+          registerIframeWindow(iframe.contentWindow);
           break;
-        case "ERROR":
+        }
+        case "ERROR": {
           console.error("❌ Iframe error:", event.data.error);
           break;
+        }
+        case "SCENE_LOADED":
         default:
-        // No-op
-      }
-    };
-
-    const handleReady = (event: MessageEvent) => {
-      console.log("📨 Parent received message:", event.data?.type, {
-        source:
-          event.source === iframe.contentWindow
-            ? "correct-iframe"
-            : "other-source",
-        currentIframeSrc: iframe.src,
-        iframeKey,
-      });
-      if (event.source !== iframe.contentWindow) return;
-      if (event.data?.type === "IFRAME_READY") {
-        console.log("🟢 Iframe ready, registering window and setting theme");
-        registerIframeWindow(iframe.contentWindow);
-        // Push CSS variable-based theme to iframe once ready
-        const styles = getComputedStyle(document.documentElement);
-        const sceneBg = styles.getPropertyValue("--mujoco-scene-bg").trim();
-        const floor = styles.getPropertyValue("--mujoco-scene-bg").trim();
-        setTheme({ sceneBg, floor, ambient: floor, hemi: floor });
+          // No-op
+          break;
       }
     };
 
     window.addEventListener("message", handleMessage);
-    window.addEventListener("message", handleReady);
 
     return () => {
       console.log("🧹 Cleaning up iframe effect for key:", iframeKey);
       window.removeEventListener("message", handleMessage);
-      window.removeEventListener("message", handleReady);
       registerIframeWindow(null);
     };
-  }, [registerIframeWindow, setTheme, iframeKey]);
+  }, [registerIframeWindow, iframeKey]);
 
   return (
     <div className="w-full h-full flex flex-row relative">

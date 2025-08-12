@@ -57,7 +57,7 @@ export class MujocoViewer {
     };
     this.scene.background = new THREE.Color(this.theme.sceneBg);
 
-    // Centralized fill lights
+    // Centralized fill lights based on default theme
     this._createFillLights();
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -129,18 +129,6 @@ export class MujocoViewer {
         }
       });
     }
-  }
-
-  applyTheme({ sceneBg, floor, ambient, hemi }) {
-    this.theme = {
-      sceneBg: sceneBg || this.theme.sceneBg,
-      floor: floor || this.theme.floor,
-      ambient: ambient || this.theme.ambient,
-      hemi: hemi || this.theme.hemi,
-    };
-    this.scene.background = new THREE.Color(this.theme.sceneBg);
-    this._createFillLights();
-    this._applyFloorTheme();
   }
 
   async init() {
@@ -296,44 +284,6 @@ window.addEventListener("message", async (event) => {
 
   try {
     switch (event.data.type) {
-      case "SET_THEME": {
-        const { sceneBg, floor, ambient, hemi } = event.data || {};
-        if (viewer) {
-          viewer.theme = {
-            sceneBg: sceneBg || viewer.theme.sceneBg,
-            floor: floor || viewer.theme.floor,
-            ambient: ambient || viewer.theme.ambient,
-            hemi: hemi || viewer.theme.hemi,
-          };
-          // Apply immediately to scene and lights
-          if (viewer.scene) {
-            viewer.scene.background = new THREE.Color(viewer.theme.sceneBg);
-          }
-          if (viewer.ambientLight) {
-            viewer.ambientLight.color = new THREE.Color(viewer.theme.ambient);
-          }
-          if (viewer.hemiLight) {
-            viewer.hemiLight.color = new THREE.Color(viewer.theme.hemi);
-            viewer.hemiLight.groundColor = new THREE.Color(viewer.theme.hemi);
-          }
-          const mujocoRoot = viewer.scene.getObjectByName("MuJoCo Root");
-          if (mujocoRoot) {
-            mujocoRoot.traverse((obj) => {
-              if (
-                obj.isMesh &&
-                obj.userData &&
-                obj.userData.isFloor &&
-                obj.material &&
-                obj.material.color
-              ) {
-                obj.material.color.set(viewer.theme.floor);
-                obj.material.needsUpdate = true;
-              }
-            });
-          }
-        }
-        break;
-      }
       case "RESET_POSE":
         if (viewer?.simulation) {
           viewer.simulation.resetData();
@@ -468,61 +418,6 @@ window.addEventListener("message", async (event) => {
             { type: "SCENE_LOADED", sceneName: rel },
             "*"
           );
-        } catch (e) {
-          window.parent.postMessage({ type: "ERROR", error: String(e) }, "*");
-        }
-        break;
-      }
-
-      case "SET_TRANSPARENT_BACKGROUND": {
-        try {
-          // Ensure transparent canvas
-          viewer.scene.background = null;
-          if (viewer.renderer) {
-            viewer.renderer.setClearAlpha(0);
-            viewer.renderer.setClearColor(0x000000, 0);
-            const gl = viewer.renderer.getContext();
-            if (gl && gl.canvas && gl.canvas.style) {
-              gl.canvas.style.background = "transparent";
-            }
-          }
-          window.parent.postMessage({ type: "BACKGROUND_SET" }, "*");
-        } catch (e) {
-          window.parent.postMessage({ type: "ERROR", error: String(e) }, "*");
-        }
-        break;
-      }
-
-      case "FIT_ISO": {
-        try {
-          const root = viewer.scene.getObjectByName("MuJoCo Root");
-          if (root) {
-            const box = new THREE.Box3().setFromObject(root);
-            const center = box.getCenter(new THREE.Vector3());
-            const size = box.getSize(new THREE.Vector3());
-            const maxDim = Math.max(size.x, size.y, size.z);
-            const radius = maxDim * 0.5;
-
-            // Place camera along isometric direction
-            const dir = new THREE.Vector3(1, 1, 1).normalize();
-            const distance = radius * 2.6; // tuned factor for padding
-            const position = center.clone().add(dir.multiplyScalar(distance));
-
-            viewer.camera.position.copy(position);
-            if (viewer.controls) {
-              viewer.controls.target.copy(center);
-              viewer.controls.update();
-            } else {
-              viewer.camera.lookAt(center);
-            }
-
-            // Optional: disable fog for crisp capture
-            viewer.scene.fog = null;
-
-            // Render a frame
-            viewer.renderer.render(viewer.scene, viewer.camera);
-          }
-          window.parent.postMessage({ type: "FITTED_ISO" }, "*");
         } catch (e) {
           window.parent.postMessage({ type: "ERROR", error: String(e) }, "*");
         }

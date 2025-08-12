@@ -33,13 +33,6 @@ export default function CaptureMJCF() {
     const onMessage2 = (event: MessageEvent) => {
       if (event.source !== iframeRef.current?.contentWindow) return;
       if (event.data?.type === "SCENE_LOADED") {
-        iframeRef.current?.contentWindow?.postMessage(
-          { type: "SET_TRANSPARENT_BACKGROUND" },
-          "*"
-        );
-      } else if (event.data?.type === "BACKGROUND_SET") {
-        iframeRef.current?.contentWindow?.postMessage({ type: "FIT_ISO" }, "*");
-      } else if (event.data?.type === "FITTED_ISO") {
         // Capture PNG and send back via postMessage to parent Puppeteer capturer
         try {
           const canvas =

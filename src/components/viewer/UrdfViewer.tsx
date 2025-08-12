@@ -14,36 +14,44 @@ import {
 } from "@/components/viewer/urdfViewerHelpers";
 import * as THREE from "three";
 
-// Dynamic import for URDFManipulator to avoid SSR issues
-let URDFManipulator: typeof HTMLElement | null = null;
 const defaultUrdfPath = "/urdf/cassie/cassie.urdf";
+let registrationPromise: Promise<void> | null = null;
 
-// Register the URDFManipulator as a custom element (idempotent and race-safe)
-const registerUrdfManipulator = async () => {
+const registerUrdfManipulator = async (): Promise<void> => {
   if (typeof window === "undefined") return;
-  const w = window as Window & { __urdfViewerRegistered?: boolean };
-  if (customElements.get("urdf-viewer") || w.__urdfViewerRegistered) return;
-  try {
-    if (!URDFManipulator) {
-      const urdfModule = await import(
-        "urdf-loader/src/urdf-manipulator-element.js"
-      );
-      URDFManipulator = urdfModule.default;
-    }
-    customElements.define("urdf-viewer", URDFManipulator);
-    w.__urdfViewerRegistered = true;
-  } catch (error: unknown) {
-    // Ignore re-definition errors caused by concurrent registration attempts
-    const message = (error as Error)?.message || "";
-    if (
-      message.includes("has already been used") ||
-      (error as { name?: string })?.name === "NotSupportedError"
-    ) {
-      w.__urdfViewerRegistered = true;
-      return;
-    }
-    throw error;
+  if (customElements.get("urdf-viewer")) return; // Already registered
+
+  if (!registrationPromise) {
+    registrationPromise = (async () => {
+      try {
+        const urdfModule = await import(
+          "urdf-loader/src/urdf-manipulator-element.js"
+        );
+        const UrdfManipulatorElement = urdfModule.default;
+
+        // Double-check to avoid define clashes in concurrent calls
+        if (!customElements.get("urdf-viewer")) {
+          try {
+            customElements.define("urdf-viewer", UrdfManipulatorElement);
+          } catch (defineError) {
+            // Swallow duplicate-definition errors from races
+            const name = (defineError as { name?: string })?.name;
+            const message = (defineError as Error)?.message || "";
+            const isDuplicate =
+              name === "NotSupportedError" ||
+              message.includes("has already been used");
+            if (!isDuplicate) throw defineError;
+          }
+        }
+      } catch (e) {
+        // Reset promise on hard failures so future attempts can retry
+        registrationPromise = null;
+        throw e;
+      }
+    })();
   }
+
+  return registrationPromise;
 };
 
 const UrdfViewer: React.FC = () => {
@@ -109,8 +117,14 @@ const UrdfViewer: React.FC = () => {
       // Setup model loading if a path is available
       if (urdfPath) {
         setupModelLoading(viewer, urdfPath);
-        // cleanupFunctions.push(cleanupModelLoading);
       }
+
+      const onModelProcessed = () => {
+        // Fit robot to view after it's loaded
+        if (viewerRef.current) {
+          fitRobotToView(viewerRef.current);
+        }
+      };
 
       // Setup joint highlighting
       const cleanupJointHighlighting = setupJointHighlighting(
@@ -118,12 +132,6 @@ const UrdfViewer: React.FC = () => {
         setHighlightedJoint
       );
       cleanupFunctions.push(cleanupJointHighlighting);
-
-      // Setup animation event handler for the default model or when hasAnimation is true
-      const onModelProcessed = () => {
-        // Fit robot to view after it's loaded
-        fitRobotToView(viewer);
-      };
 
       viewer.addEventListener("urdf-processed", onModelProcessed);
       cleanupFunctions.push(() => {
@@ -166,18 +174,6 @@ const UrdfViewer: React.FC = () => {
         .add(isoDirection.multiplyScalar(distance));
       viewer.camera.position.copy(position);
       viewer.controls.target.copy(center);
-
-      // Transparent background on canvas if supported
-      try {
-        const r = (viewer as unknown as { renderer?: THREE.WebGLRenderer })
-          .renderer as THREE.WebGLRenderer | undefined;
-        if (r) {
-          r.setClearColor(0x000000, 0);
-          r.setClearAlpha(0);
-          (r.getContext().canvas as HTMLCanvasElement).style.background =
-            "transparent";
-        }
-      } catch {}
 
       // Update controls and mark for redraw
       viewer.controls.update();

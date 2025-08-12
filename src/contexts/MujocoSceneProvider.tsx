@@ -10,7 +10,12 @@ import React, {
   useMemo,
 } from "react";
 import { useRobot } from "@/hooks/useRobot";
+import { useExampleRobots } from "@/hooks/useExampleRobots";
 import { subscribeInlineXml, consumeLastInlineXml } from "@/lib/mujocoEvents";
+import {
+  subscribeRobotFilesUpload,
+  consumeLastRobotFilesUpload,
+} from "@/lib/robotFilesEvents";
 
 type MujocoMessage =
   | { type: "LOAD_PUBLIC_SCENE"; path: string }
@@ -27,6 +32,14 @@ type MujocoMessage =
       ambient?: string;
       hemi?: string;
     };
+// Extended messages handled by the iframe viewer implementation
+type MujocoExtendedMessage =
+  | MujocoMessage
+  | {
+      type: "LOAD_MJCF_FILES_MAP";
+      entries: { path: string; buffer: ArrayBuffer }[];
+    }
+  | { type: "LOAD_MJCF_ROOT"; path: string };
 
 type MujocoSceneContextType = {
   registerIframeWindow: (win: Window | null) => void;
@@ -60,9 +73,9 @@ export const MujocoSceneProvider: React.FC<{ children: React.ReactNode }> = ({
   const pendingSceneRef = useRef<string | null>(null);
   const pendingXmlRef = useRef<{ name: string; content: string } | null>(null);
   const [currentScenePath, setCurrentScenePath] = useState<string | null>(null);
-  const [examples, setExamples] = useState<any[] | null>(null);
+  const { examples } = useExampleRobots();
 
-  const post = useCallback((data: MujocoMessage) => {
+  const post = useCallback((data: MujocoExtendedMessage) => {
     const target = iframeWindowRef.current;
     console.log("📤 Posting message:", data.type, {
       hasTarget: !!target,
@@ -182,28 +195,7 @@ export const MujocoSceneProvider: React.FC<{ children: React.ReactNode }> = ({
     [post]
   );
 
-  // Fetch example robots once (for resolving MJCF public scenes by owner/name)
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        console.log("📋 Fetching example robots...");
-        const res = await fetch("/example_robots.json", { cache: "no-store" });
-        if (!res.ok) {
-          console.error("❌ Failed to fetch example robots:", res.status);
-          return;
-        }
-        const data = (await res.json()) as any[];
-        console.log("✅ Example robots loaded:", data.length);
-        if (mounted) setExamples(data);
-      } catch (error) {
-        console.error("❌ Error fetching examples:", error);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  // examples are provided by context
 
   // Handle inline XML uploads published via event bus
   useEffect(() => {
@@ -217,6 +209,47 @@ export const MujocoSceneProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     });
     return unsubscribe;
+  }, [activeRobotType, loadXmlContent]);
+
+  // Handle unified robot files for MJCF (send all files to iframe FS and load root)
+  useEffect(() => {
+    const maybeProcess = async (
+      filesMap: Record<string, File>,
+      xmlPath: string
+    ) => {
+      try {
+        // Convert to transferable payload: [{ path, buffer }]
+        const entries = await Promise.all(
+          Object.entries(filesMap).map(async ([path, file]) => ({
+            path,
+            buffer: await file.arrayBuffer(),
+          }))
+        );
+        // Write all files into the iframe FS
+        post({ type: "LOAD_MJCF_FILES_MAP", entries });
+        // Then ask it to load the XML root
+        post({ type: "LOAD_MJCF_ROOT", path: xmlPath.replace(/^\/+/, "") });
+      } catch (e) {
+        console.warn(
+          "[MujocoSceneProvider] Failed to process MJCF files map",
+          e
+        );
+      }
+    };
+    const pending = consumeLastRobotFilesUpload?.();
+    if (
+      pending &&
+      activeRobotType === "MJCF" &&
+      pending.primary?.type === "MJCF"
+    ) {
+      maybeProcess(pending.files, pending.primary.path);
+    }
+    const unsubscribe = subscribeRobotFilesUpload?.((payload) => {
+      if (activeRobotType === "MJCF" && payload.primary?.type === "MJCF") {
+        maybeProcess(payload.files, payload.primary.path);
+      }
+    });
+    return unsubscribe ?? (() => {});
   }, [activeRobotType, loadXmlContent]);
 
   // Resolve current MJCF example selection and load scene

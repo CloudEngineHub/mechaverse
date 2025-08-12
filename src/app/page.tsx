@@ -4,6 +4,7 @@ import { useState } from "react";
 
 // Contexts
 import { RobotProvider } from "@/contexts/RobotContext";
+import { ExampleRobotsProvider } from "@/contexts/ExampleRobotsContext";
 
 // Components
 import Navbar from "@/components/misc/Navbar";
@@ -19,31 +20,33 @@ export default function Home() {
       {/* Navbar */}
       <Navbar />
       {/* Main content area */}
-      <RobotProvider>
-        <main className="flex flex-1 w-full h-[90vh] min-h-0 bg-[#FCF4DD] p-6">
-          <div className="flex flex-row w-full h-full gap-6">
-            {/* Robot Selector section */}
-            <div className="flex-[2] min-w-0 w-full h-full bg-[#FFFBF1] rounded-3xl overflow-hidden">
-              <ViewerControls
-                onUploadClick={() => setShowFullScreenDragDrop(true)}
+      <ExampleRobotsProvider>
+        <RobotProvider>
+          <main className="flex flex-1 w-full h-[90vh] min-h-0 bg-[#FCF4DD] p-6">
+            <div className="flex flex-row w-full h-full gap-6">
+              {/* Robot Selector section */}
+              <div className="flex-[2] min-w-0 w-full h-full bg-[#FFFBF1] rounded-3xl overflow-hidden">
+                <ViewerControls
+                  onUploadClick={() => setShowFullScreenDragDrop(true)}
+                />
+              </div>
+              {/* Viewer section */}
+              <div className="flex-[4] min-w-0 h-full flex items-center justify-center bg-[#fef4da] rounded-3xl overflow-hidden">
+                <ViewerSwitch />
+              </div>
+            </div>
+          </main>
+
+          {/* Full Screen Drag Drop Overlay */}
+          {showFullScreenDragDrop && (
+            <div className="absolute inset-0">
+              <FullScreenDragDrop
+                onClose={() => setShowFullScreenDragDrop(false)}
               />
             </div>
-            {/* Viewer section */}
-            <div className="flex-[4] min-w-0 h-full flex items-center justify-center bg-[#fef4da] rounded-3xl overflow-hidden">
-              <ViewerSwitch />
-            </div>
-          </div>
-        </main>
-
-        {/* Full Screen Drag Drop Overlay */}
-        {showFullScreenDragDrop && (
-          <div className="absolute inset-0">
-            <FullScreenDragDrop
-              onClose={() => setShowFullScreenDragDrop(false)}
-            />
-          </div>
-        )}
-      </RobotProvider>
+          )}
+        </RobotProvider>
+      </ExampleRobotsProvider>
     </div>
   );
 }

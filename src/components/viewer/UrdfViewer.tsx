@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 
 import { useRobot } from "@/hooks/useRobot";
-import type { ExampleRobot } from "@/types/robot";
+import { useExampleRobots } from "@/hooks/useExampleRobots";
 import { useUrdfRuntime } from "@/hooks/useUrdfRuntime";
 import {
   createUrdfViewer,
@@ -67,24 +67,7 @@ const UrdfViewer: React.FC = () => {
   const [hasDroppedRobot, setHasDroppedRobot] = useState(false);
 
   // Mapping from example metadata owner/repo_name to path
-  const [examples, setExamples] = useState<ExampleRobot[] | null>(null);
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const res = await fetch("/example_robots.json", { cache: "no-store" });
-        if (!res.ok) throw new Error("Failed to load example_robots.json");
-        const data = (await res.json()) as ExampleRobot[];
-        if (mounted) setExamples(data);
-      } catch (e) {
-        console.warn("[UrdfViewer] Could not load example robots:", e);
-        if (mounted) setExamples([]);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const { examples } = useExampleRobots();
 
   // Implement UrdfProcessor interface for drag and drop
   const urdfProcessor = useMemo(

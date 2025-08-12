@@ -4,11 +4,15 @@ import Script from "next/script";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useRobot } from "@/hooks/useRobot";
-import type { ExampleRobot } from "@/types/robot";
+import { useExampleRobots } from "@/hooks/useExampleRobots";
 import {
   subscribeUsdDataTransfer,
   consumeLastUsdDataTransfer,
 } from "@/lib/usdEvents";
+import {
+  subscribeRobotFilesUpload,
+  consumeLastRobotFilesUpload,
+} from "@/lib/robotFilesEvents";
 
 type UsdViewerHandle = {
   loadFromURL?: (url: string) => Promise<void> | void;
@@ -34,11 +38,15 @@ declare global {
 export default function UsdViewer() {
   const containerRef = useRef<HTMLDivElement>(null);
   const handleRef = useRef<UsdViewerHandle | null>(null);
+  const pendingUnifiedRef = useRef<{
+    files: Record<string, File>;
+    primaryPath?: string;
+  } | null>(null);
   const [status, setStatus] = useState(
     "Waiting for initialization to start..."
   );
   // isDragging is now provided by context; local state only for status
-  const [examples, setExamples] = useState<ExampleRobot[] | null>(null);
+  const { examples } = useExampleRobots();
   const { activeRobotType, activeRobotOwner, activeRobotName } = useRobot();
 
   useEffect(() => {
@@ -57,6 +65,43 @@ export default function UsdViewer() {
           return;
         }
         handleRef.current = handle;
+        // If a unified payload arrived before init, process it now
+        if (pendingUnifiedRef.current) {
+          const { files, primaryPath } = pendingUnifiedRef.current;
+          pendingUnifiedRef.current = null;
+          const anyHandle = handle as unknown as {
+            loadFromFilesMap?: (
+              files: Record<string, File>,
+              primaryPath?: string
+            ) => Promise<void> | void;
+          };
+          if (anyHandle.loadFromFilesMap) {
+            await anyHandle.loadFromFilesMap(files, primaryPath);
+          } else if (handle.loadFromFiles) {
+            await handle.loadFromFiles(Object.values(files) as any);
+          }
+          setStatus("");
+        } else {
+          // Consume any pending last payload now that handle is ready
+          const pending = consumeLastRobotFilesUpload?.();
+          if (pending && pending.primary?.type === "USD") {
+            const anyHandle = handle as unknown as {
+              loadFromFilesMap?: (
+                files: Record<string, File>,
+                primaryPath?: string
+              ) => Promise<void> | void;
+            };
+            if (anyHandle.loadFromFilesMap) {
+              await anyHandle.loadFromFilesMap(
+                pending.files,
+                pending.primary.path
+              );
+            } else if (handle.loadFromFiles) {
+              await handle.loadFromFiles(Object.values(pending.files) as any);
+            }
+            setStatus("");
+          }
+        }
       } catch (e) {
         console.error(e);
         setStatus("Initialization failed");
@@ -86,24 +131,31 @@ export default function UsdViewer() {
     }
   }, []);
 
-  // Load USD examples list for resolving selection to URL
-  useEffect(() => {
-    let mounted = true;
-    const load = async () => {
-      try {
-        const res = await fetch("/example_robots.json", { cache: "no-store" });
-        if (!res.ok) return;
-        const data = (await res.json()) as ExampleRobot[];
-        if (mounted) setExamples(data);
-      } catch {
-        // ignore fetch errors
+  const onFilesMap = useCallback(
+    async (files: Record<string, File>, primaryPath?: string) => {
+      const handle = handleRef.current;
+      if (!handle) return;
+      // If viewer exposes a direct API for files map, use it; else fallback to File[]
+      const maybeAny = handle as unknown as {
+        loadFromFilesMap?: (
+          files: Record<string, File>,
+          primaryPath?: string
+        ) => Promise<void> | void;
+      };
+      if (maybeAny.loadFromFilesMap) {
+        await maybeAny.loadFromFilesMap(files, primaryPath);
+        return;
       }
-    };
-    load();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+      if (handle.loadFromFiles) {
+        // Fallback: best effort — flatten to array
+        const arr = Object.values(files);
+        await handle.loadFromFiles(arr as unknown as FileList);
+      }
+    },
+    []
+  );
+
+  // examples provided by context
 
   // Handle USD file uploads via event bus
   useEffect(() => {
@@ -118,6 +170,23 @@ export default function UsdViewer() {
     });
     return unsubscribe;
   }, [activeRobotType, onDataTransfer]);
+
+  // Handle unified robot files uploads (preferred path)
+  useEffect(() => {
+    const unsubscribe = subscribeRobotFilesUpload?.((payload) => {
+      if (activeRobotType === "USD" && payload.primary?.type === "USD") {
+        if (!handleRef.current) {
+          pendingUnifiedRef.current = {
+            files: payload.files,
+            primaryPath: payload.primary?.path,
+          };
+        } else {
+          onFilesMap(payload.files, payload.primary.path);
+        }
+      }
+    });
+    return unsubscribe ?? (() => {});
+  }, [activeRobotType, onFilesMap]);
 
   // React to ViewerControls selection for USD examples
   useEffect(() => {

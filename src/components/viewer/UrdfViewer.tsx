@@ -47,13 +47,13 @@ const registerUrdfManipulator = async () => {
 };
 
 const UrdfViewer: React.FC = () => {
-  const containerRef = useRef<HTMLDivElement>(null);
   const [highlightedJoint, setHighlightedJoint] = useState<string | null>(null);
   const { activeRobotOwner, activeRobotName } = useRobot();
   const { registerUrdfProcessor } = useUrdfRuntime();
+  const { examples } = useExampleRobots();
 
   const viewerRef = useRef<URDFViewerElement | null>(null);
-  const hasInitializedRef = useRef<boolean>(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Add state for custom URDF path
   const [customUrdfPath, setCustomUrdfPath] = useState<string | null>(null);
@@ -61,42 +61,25 @@ const UrdfViewer: React.FC = () => {
     ((url: string) => string) | null
   >(null);
 
-  const packageRef = useRef<string>("");
-
-  // State to track if we have a dropped robot
-  const [hasDroppedRobot, setHasDroppedRobot] = useState(false);
-
-  // Mapping from example metadata owner/repo_name to path
-  const { examples } = useExampleRobots();
-
   // Implement UrdfProcessor interface for drag and drop
   const urdfProcessor = useMemo(
     () => ({
       loadUrdf: (urdfPath: string) => {
         setCustomUrdfPath(urdfPath);
-        setHasDroppedRobot(true);
       },
       setUrlModifierFunc: (func: (url: string) => string) => {
         setUrlModifierFunc(() => func);
-      },
-      getPackage: () => {
-        return packageRef.current;
       },
     }),
     []
   );
 
-  // Register the URDF processor with the global drag and drop context
+  // Register the URDF processor
   useEffect(() => {
     registerUrdfProcessor(urdfProcessor);
   }, [registerUrdfProcessor, urdfProcessor]);
 
-  // Reset dropped state when switching to a catalog/example robot
-  useEffect(() => {
-    setHasDroppedRobot(false);
-  }, [activeRobotOwner, activeRobotName]);
-
-  // Main effect to create and setup the viewer only once
+  // Create and setup the viewer only once
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -106,12 +89,12 @@ const UrdfViewer: React.FC = () => {
     registerUrdfManipulator().then(() => {
       // Create and configure the URDF viewer element
       const viewer = createUrdfViewer(containerRef.current!);
-      viewerRef.current = viewer; // Store reference to the viewer
+      viewerRef.current = viewer;
 
       // Setup mesh loading function
       setupMeshLoader(viewer, urlModifierFunc);
 
-      // Resolve selected robot path (owner/repo) or default to SO-100
+      // Resolve selected robot path (owner/repo)
       let urdfPath = defaultUrdfPath;
       if (examples && activeRobotOwner && activeRobotName) {
         const match = examples.find(
@@ -125,14 +108,8 @@ const UrdfViewer: React.FC = () => {
 
       // Setup model loading if a path is available
       if (urdfPath) {
-        const cleanupModelLoading = setupModelLoading(
-          viewer,
-          urdfPath,
-          packageRef.current,
-          setCustomUrdfPath,
-          []
-        );
-        cleanupFunctions.push(cleanupModelLoading);
+        setupModelLoading(viewer, urdfPath);
+        // cleanupFunctions.push(cleanupModelLoading);
       }
 
       // Setup joint highlighting
@@ -144,8 +121,6 @@ const UrdfViewer: React.FC = () => {
 
       // Setup animation event handler for the default model or when hasAnimation is true
       const onModelProcessed = () => {
-        hasInitializedRef.current = true;
-
         // Fit robot to view after it's loaded
         fitRobotToView(viewer);
       };
@@ -158,7 +133,6 @@ const UrdfViewer: React.FC = () => {
 
     // Return cleanup function
     return () => {
-      hasInitializedRef.current = false;
       cleanupFunctions.forEach((cleanup) => cleanup());
     };
   }, [urlModifierFunc, examples, activeRobotOwner, activeRobotName]);
@@ -248,7 +222,7 @@ const UrdfViewer: React.FC = () => {
         viewerRef.current.addEventListener("urdf-processed", onUrdfProcessed);
 
         viewerRef.current.setAttribute("urdf", urdfPath);
-        viewerRef.current.setAttribute("package", packageRef.current);
+        // viewerRef.current.setAttribute("package", "");
 
         // Force a redraw
         if (viewerRef.current.redraw) {
@@ -260,7 +234,7 @@ const UrdfViewer: React.FC = () => {
 
   // Effect to update the viewer when a new robot is dropped
   useEffect(() => {
-    if (!viewerRef.current || !hasDroppedRobot || !customUrdfPath) return;
+    if (!viewerRef.current || !customUrdfPath) return;
 
     // Update the viewer with the new URDF
     const loadPath =
@@ -293,7 +267,7 @@ const UrdfViewer: React.FC = () => {
         viewerRef.current.addEventListener("urdf-processed", onUrdfProcessed);
 
         viewerRef.current.setAttribute("urdf", loadPath);
-        viewerRef.current.setAttribute("package", packageRef.current);
+        // viewerRef.current.setAttribute("package", "");
 
         // Force a redraw
         if (viewerRef.current.redraw) {
@@ -301,35 +275,19 @@ const UrdfViewer: React.FC = () => {
         }
       }
     }, 100);
-  }, [customUrdfPath, hasDroppedRobot, urlModifierFunc]);
+  }, [customUrdfPath, urlModifierFunc]);
 
   // Effect to update mesh loader when URL modifier function changes
   useEffect(() => {
     if (!viewerRef.current) return;
 
-    // Create a debug wrapper for the URL modifier function
-    const debugUrlModifier = urlModifierFunc
-      ? (url: string) => {
-          const result = urlModifierFunc(url);
-          return result;
-        }
-      : null;
-
-    setupMeshLoader(viewerRef.current, debugUrlModifier);
+    setupMeshLoader(viewerRef.current, urlModifierFunc);
   }, [urlModifierFunc]);
-
-  // Separate effect to handle theme changes without recreating the viewer
-  useEffect(() => {
-    if (!viewerRef.current) return;
-
-    // Theme changes are handled by the container style in createUrdfViewer
-    // No need to update background here as it's already set during creation
-  }, []);
 
   return (
     <div
       className={cn(
-        "w-full h-full transition-all duration-300 ease-in-out relative rounder-xl"
+        "w-full h-full transition-all duration-300 ease-in-out relative rounded-xl"
       )}
     >
       <div ref={containerRef} className="w-full h-full absolute inset-0" />

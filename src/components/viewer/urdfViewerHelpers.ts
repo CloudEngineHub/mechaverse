@@ -52,7 +52,6 @@ export function createUrdfViewer(container: HTMLDivElement): URDFViewerElement {
     viewer.background = "transparent";
     viewer.setAttribute("background", "transparent");
   } catch {}
-  setViewerColor(viewer, "#eff4ff");
   viewer.setAttribute("highlight-color", "#FBE651");
   viewer.setAttribute("auto-redraw", "true");
 
@@ -140,11 +139,8 @@ export function setupJointHighlighting(
  */
 export function setupModelLoading(
   viewer: URDFViewerElement,
-  urdfPath: string,
-  packagePath: string,
-  setCustomUrdfPath: (path: string) => void,
-  alternativeRobotModels: string[] = [] // Add parameter for alternative models
-): () => void {
+  urdfPath: string
+): void {
   // Add XML content type hint for blob URLs
   const loadPath =
     urdfPath.startsWith("blob:") && !urdfPath.includes("#.")
@@ -153,36 +149,4 @@ export function setupModelLoading(
 
   // Set the URDF path
   viewer.setAttribute("urdf", loadPath);
-  viewer.setAttribute("package", packagePath);
-
-  // Handle error loading
-  const onLoadError = () => {
-    // Use the provided alternativeRobotModels instead of the global window object
-    if (alternativeRobotModels.length > 0) {
-      const nextModel = alternativeRobotModels[0];
-      if (nextModel) {
-        setCustomUrdfPath(nextModel);
-      }
-    }
-  };
-
-  viewer.addEventListener("error", onLoadError);
-
-  // Return cleanup function
-  return () => {
-    viewer.removeEventListener("error", onLoadError);
-  };
-}
-
-/**
- * Sets the background color of the URDF viewer
- */
-function setViewerColor(viewer: URDFViewerElement, color: string): void {
-  return;
-  // Set the background color on the viewer's parent container
-  // TODO: Uncomment this if we want a way to set the background color of the viewer
-  // const container = viewer.parentElement;
-  // if (container) {
-  //   container.style.backgroundColor = color;
-  // }
 }

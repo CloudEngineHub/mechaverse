@@ -138,11 +138,7 @@ export function cleanFilePath(path: string): string {
 export interface UrdfProcessor {
   loadUrdf: (path: string) => void;
   setUrlModifierFunc: (func: (url: string) => string) => void;
-  getPackage: () => string;
 }
-
-// Reference to hold the package path
-const packageRef = { current: "" };
 
 // Private helper function to create the URL resolver
 function createUrlResolverForProcessor(
@@ -198,9 +194,6 @@ async function processUrdfFilesCore(
   availableModels: string[];
   blobUrls: Record<string, string>;
 }> {
-  // Reset the package reference
-  packageRef.current = "";
-
   // Get all file paths and clean them
   const fileNames = Object.keys(files).map((n) => cleanFilePath(n));
 

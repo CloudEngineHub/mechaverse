@@ -459,17 +459,7 @@ export async function stageMjcfSceneToVfs(mujoco, path, options = {}) {
     if (visited.has(relPath)) return;
     visited.add(relPath);
     if (!mujoco.FS.analyzePath(vfsPath).exists) {
-      // If we are staging an uploaded scene, do not fetch from public; treat missing file as an error
-      const isUploadMode =
-        (Array.isArray(options.files) && options.files.length > 0) ||
-        !!options.xml;
-      if (isUploadMode) {
-        throw new Error(`Missing referenced XML in uploaded scene: ${relPath}`);
-      } else {
-        const res = await fetch(basePrefix + relPath, { cache: "no-store" });
-        if (!res.ok) throw new Error("Failed to fetch " + relPath);
-        await writeText(vfsPath, await res.text());
-      }
+      throw new Error(`Missing referenced XML in scene: ${relPath}`);
     }
 
     // Parse and find dependencies
@@ -549,27 +539,8 @@ export async function stageMjcfSceneToVfs(mujoco, path, options = {}) {
         const fullVfs = "/working/" + assetRel;
 
         if (!mujoco.FS.analyzePath(fullVfs).exists) {
-          const isUploadMode =
-            (Array.isArray(options.files) && options.files.length > 0) ||
-            !!options.xml;
-          if (isUploadMode) {
-            // In upload mode, require assets to have been provided
-            throw new Error(
-              `Missing referenced asset in uploaded scene: ${assetRel}`
-            );
-          } else {
-            const url = basePrefix + assetRel;
-            const r = await fetch(url, { cache: "no-store" });
-            if (!r.ok) throw new Error("Failed to fetch asset " + assetRel);
-
-            const lower2 = assetRel.toLowerCase();
-            const isBinary2 = binaryExts.some((ext) => lower2.endsWith(ext));
-            if (isBinary2) {
-              await writeBinary(fullVfs, r);
-            } else {
-              await writeText(fullVfs, await r.text());
-            }
-          }
+          // Require assets to have been provided by caller
+          throw new Error(`Missing referenced asset in scene: ${assetRel}`);
         }
       }
     }

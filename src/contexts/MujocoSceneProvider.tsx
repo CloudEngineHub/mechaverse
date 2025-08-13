@@ -307,11 +307,16 @@ export const MujocoSceneProvider: React.FC<{ children: React.ReactNode }> = ({
     ) => {
       try {
         // Convert to transferable payload: [{ path, buffer }]
+        // Handle XML files as text, others as binary
         const entries = await Promise.all(
-          Object.entries(filesMap).map(async ([path, file]) => ({
-            path,
-            buffer: (await file.arrayBuffer()) as ArrayBuffer,
-          }))
+          Object.entries(filesMap).map(async ([path, file]) => {
+            const isXml = path.toLowerCase().endsWith(".xml");
+            const buffer = isXml
+              ? (new TextEncoder().encode(await file.text())
+                  .buffer as ArrayBuffer)
+              : ((await file.arrayBuffer()) as ArrayBuffer);
+            return { path, buffer };
+          })
         );
         // Unified upload and load
         post({
@@ -355,13 +360,39 @@ export const MujocoSceneProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [examples, activeRobotType, activeRobotOwner, activeRobotName]);
 
   useEffect(() => {
+    // Only load example scenes if we have examples loaded and we're dealing with an example robot
+    // Skip if this is an uploaded robot (owner/name are UUIDs or non-example values)
+    if (!examples || activeRobotType !== "MJCF") {
+      return;
+    }
+
+    // Check if this is actually an example robot (from our examples list)
+    const isExampleRobot = examples.some(
+      (e) =>
+        e.owner === activeRobotOwner &&
+        e.repo_name === activeRobotName &&
+        e.fileType === "MJCF"
+    );
+
+    if (!isExampleRobot) {
+      // This is an uploaded robot, not an example - skip example loading
+      return;
+    }
+
     if (!selectedExample || !selectedExample.path) {
       console.warn("❌ No selected example or path");
       return;
     }
     const rel = selectedExample.path.replace("/mjcf/", "");
     loadExampleScene(rel);
-  }, [selectedExample, loadExampleScene]);
+  }, [
+    selectedExample,
+    loadExampleScene,
+    examples,
+    activeRobotType,
+    activeRobotOwner,
+    activeRobotName,
+  ]);
 
   return (
     <MujocoSceneContext.Provider

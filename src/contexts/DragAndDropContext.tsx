@@ -146,13 +146,20 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
           setActiveRobotOwner(owner);
           setActiveRobotName(name);
 
-          // Unified: publish full files map with primary MJCF path
-          publishRobotFilesUpload({
-            owner,
-            name,
-            files: filesFromDtMap,
-            primary: { type: "MJCF", path: "/" + mjcfFile.name },
-          });
+          // Delay publishing until after React renders the new viewer
+          setTimeout(() => {
+            // Find the actual path of the MJCF file in the files map
+            const mjcfPath = Object.keys(filesFromDtMap).find(
+              (path) => filesFromDtMap[path] === mjcfFile
+            );
+
+            publishRobotFilesUpload({
+              owner,
+              name,
+              files: filesFromDtMap,
+              primary: { type: "MJCF", path: mjcfPath || "/" + mjcfFile.name },
+            });
+          }, 100);
 
           onComplete();
           return;
@@ -173,12 +180,17 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
           setActiveRobotOwner(owner);
           setActiveRobotName(repo);
 
+          // Find the actual path of the USD file in the files map
+          const usdPath = Object.keys(filesFromDtMap).find(
+            (path) => filesFromDtMap[path] === usdFile
+          );
+
           // Unified: publish full files map with primary USD path
           publishRobotFilesUpload({
             owner,
             name: repo,
             files: filesFromDtMap,
-            primary: { type: "USD", path: "/" + usdFile.name },
+            primary: { type: "USD", path: usdPath || "/" + usdFile.name },
           });
 
           onComplete();
@@ -199,12 +211,17 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
           setActiveRobotOwner(owner);
           setActiveRobotName(repo);
 
+          // Find the actual path of the URDF file in the files map
+          const urdfPath = Object.keys(filesFromDtMap).find(
+            (path) => filesFromDtMap[path] === urdfFile
+          );
+
           // Unified: publish full files map with primary URDF path
           publishRobotFilesUpload({
             owner,
             name: repo,
             files: filesFromDtMap,
-            primary: { type: "URDF", path: "/" + urdfFile.name },
+            primary: { type: "URDF", path: urdfPath || "/" + urdfFile.name },
           });
 
           onComplete();

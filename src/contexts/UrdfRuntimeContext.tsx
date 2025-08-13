@@ -67,7 +67,7 @@ export const UrdfRuntimeProvider: React.FC<{ children: React.ReactNode }> = ({
 
     return () => {
       mounted = false;
-      unsubscribe && unsubscribe();
+      unsubscribe?.();
     };
   }, [loadFirstModel]);
 

@@ -20,7 +20,7 @@ export interface UrdfData {
   }[];
   // Add id and files for compatibility
   id?: string;
-  files?: any[];
+  files?: Record<string, File>;
 }
 
 export interface RobotFileModel {

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import UrdfViewer from "@/components/viewer/UrdfViewer";
+import { URDFViewerElement } from "@/components/viewer/urdfViewerHelpers";
 import { RobotProvider } from "@/contexts/RobotContext";
 import { useRobot } from "@/hooks/useRobot";
 
@@ -27,9 +28,9 @@ function Inner() {
     // Wait for the correct robot to finish processing, then capture
     let cleanup: (() => void) | null = null;
     const interval = setInterval(() => {
-      const el = containerRef.current?.querySelector("urdf-viewer") as
-        | any
-        | null;
+      const el = containerRef.current?.querySelector(
+        "urdf-viewer"
+      ) as URDFViewerElement | null;
       if (!el) return;
       const onProcessed = () => {
         try {

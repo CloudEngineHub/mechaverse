@@ -30,6 +30,10 @@ export interface URDFViewerElement extends HTMLElement {
   scene: Scene;
   // Optional background property supported by the web component used in URDF mode
   background?: string;
+  // Optional renderer reference exposed by the web component (used for canvas capture)
+  renderer?: {
+    domElement: HTMLCanvasElement;
+  };
 }
 
 /**

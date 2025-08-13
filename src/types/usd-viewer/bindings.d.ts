@@ -1,7 +1,7 @@
 import type { hydraDelegate } from "./hydra";
 
 export type FSNode = {
-  contents: ArrayLike<any>;
+  contents: ArrayLike<number>;
   id: number;
   mode: number;
   name: string;
@@ -36,12 +36,12 @@ export type USD = {
     filepath: string
   ) => HdWebSyncDriver;
   flushPendingDeletes: () => void;
-  ready: Promise<any>;
+  ready: Promise<unknown>;
   debug: boolean;
   calledRun: boolean;
-  stderr: any;
-  stdin: any;
-  stdout: any;
+  stderr: unknown;
+  stdin: unknown;
+  stdout: unknown;
 };
 
 export type USDStage = {
@@ -87,4 +87,4 @@ export type GetUsdModuleOptions = {
 
 export function getUsdModule(opts?: GetUsdModuleOptions): Promise<USD>;
 
-export type USDRoot = {};
+export type USDRoot = Record<string, unknown>;

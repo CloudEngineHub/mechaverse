@@ -16,7 +16,13 @@ function parseArgs(): CliOpts {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
   const args = process.argv.slice(2);
-  const opts: any = {};
+  const opts: CliOpts = {
+    inputDir: "",
+    outputDir: "",
+    threshold: 28,
+    feather: 12,
+    size: 800,
+  };
   for (const a of args) {
     const [k, v] = a.split("=");
     if (k === "--input" || k === "-i") opts.inputDir = v;
@@ -54,8 +60,7 @@ async function removeBackgroundFromPng(
   inputPath: string,
   outputPath: string,
   threshold: number,
-  feather: number,
-  cropSize: number
+  feather: number
 ) {
   const img = sharp(inputPath);
   const { data, info } = await img
@@ -145,7 +150,7 @@ async function removeBackgroundFromPng(
 }
 
 async function main() {
-  const { inputDir, outputDir, threshold, feather, size } = parseArgs();
+  const { inputDir, outputDir, threshold, feather } = parseArgs();
   if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
 
   const files = fs
@@ -161,7 +166,7 @@ async function main() {
     const inPath = path.join(inputDir, f);
     const outPath = path.join(outputDir, f);
     try {
-      await removeBackgroundFromPng(inPath, outPath, threshold, feather, size);
+      await removeBackgroundFromPng(inPath, outPath, threshold, feather);
       console.log("✔", f);
     } catch (e) {
       console.warn("✖", f, e);

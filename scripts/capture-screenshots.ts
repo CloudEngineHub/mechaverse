@@ -55,7 +55,7 @@ async function run() {
   const robotsConfigPath = path.join(projectRoot, "data", "robots.json");
   const robots = JSON.parse(fs.readFileSync(robotsConfigPath, "utf-8"));
 
-  const puppeteer = (await import("puppeteer")) as any;
+  const puppeteer = await import("puppeteer");
   const browser = await puppeteer.launch({
     headless: true,
     defaultViewport: { width: 1024, height: 1024 },
@@ -66,7 +66,7 @@ async function run() {
     const url = base + route;
     await page.goto(url, { waitUntil: "networkidle0" });
     // Listen for CAPTURE_PNG message
-    const pngData: string = await page.evaluate(
+    const pngData: string | unknown = await page.evaluate(
       `new Promise((resolve) => {
         function handler(event){
           if (event && event.data && event.data.type === 'CAPTURE_PNG' && event.data.png) {
@@ -80,7 +80,11 @@ async function run() {
     );
 
     let outBuffer: Buffer | null = null;
-    if (pngData && pngData.startsWith("data:image/png;base64,")) {
+    if (
+      pngData &&
+      typeof pngData === "string" &&
+      pngData.startsWith("data:image/png;base64,")
+    ) {
       const b64 = pngData.replace(/^data:image\/png;base64,/, "");
       outBuffer = Buffer.from(b64, "base64");
     } else {
@@ -100,7 +104,7 @@ async function run() {
       const size = Math.min(clip.width, clip.height);
       const offsetX = clip.x + Math.floor((clip.width - size) / 2);
       const offsetY = clip.y + Math.floor((clip.height - size) / 2);
-      clip = { x: offsetX, y: offsetY, width: size, height: size } as any;
+      clip = { x: offsetX, y: offsetY, width: size, height: size };
       outBuffer = (await page.screenshot({
         type: "png",
         omitBackground: true,

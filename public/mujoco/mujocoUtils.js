@@ -233,23 +233,25 @@ export async function loadSceneFromURL(mujoco, filename, parent) {
       material.map != texture
     ) {
       material = new THREE.MeshPhysicalMaterial({
-        color: new THREE.Color(color[0], color[1], color[2]),
-        transparent: color[3] < 1.0,
-        opacity: color[3],
-        specularIntensity:
-          model.geom_matid[g] != -1
-            ? model.mat_specular[model.geom_matid[g]] * 0.5
-            : undefined,
-        reflectivity:
-          model.geom_matid[g] != -1
-            ? model.mat_reflectance[model.geom_matid[g]]
-            : undefined,
-        roughness:
-          model.geom_matid[g] != -1
-            ? 1.0 - model.mat_shininess[model.geom_matid[g]]
-            : undefined,
-        metalness: model.geom_matid[g] != -1 ? 0.1 : undefined,
-        map: texture,
+        ...{
+          color: new THREE.Color(color[0], color[1], color[2]),
+          transparent: color[3] < 1.0,
+          opacity: color[3],
+          specularIntensity:
+            model.geom_matid[g] != -1
+              ? model.mat_specular[model.geom_matid[g]] * 0.5
+              : undefined,
+          reflectivity:
+            model.geom_matid[g] != -1
+              ? model.mat_reflectance[model.geom_matid[g]]
+              : undefined,
+          roughness:
+            model.geom_matid[g] != -1
+              ? 1.0 - model.mat_shininess[model.geom_matid[g]]
+              : undefined,
+          metalness: model.geom_matid[g] != -1 ? 0.1 : undefined,
+          ...(texture !== undefined ? { map: texture } : {}),
+        },
       });
     }
 
@@ -263,7 +265,6 @@ export async function loadSceneFromURL(mujoco, filename, parent) {
         reflectivity: 0,
         metalness: 0,
         roughness: 1,
-        map: undefined,
       });
       mesh = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), matteMaterial);
       mesh.rotateX(-Math.PI / 2);

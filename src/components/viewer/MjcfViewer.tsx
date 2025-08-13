@@ -32,13 +32,7 @@ export default function MjcfViewer() {
 
   useEffect(() => {
     const iframe = iframeRef.current;
-    console.log("🔧 Setting up iframe effect", iframe?.src);
     if (!iframe) return;
-
-    iframe.onload = () => {
-      console.log("🔄 Iframe loaded:", iframe.src);
-      // Wait for IFRAME_READY to ensure wasm/vfs are initialized
-    };
 
     iframe.onerror = (error) => {
       console.error("❌ Iframe failed to load:", error);
@@ -68,7 +62,6 @@ export default function MjcfViewer() {
     window.addEventListener("message", handleMessage);
 
     return () => {
-      console.log("🧹 Cleaning up iframe effect");
       window.removeEventListener("message", handleMessage);
       registerIframeWindow(null);
     };

@@ -201,6 +201,8 @@ export const MujocoSceneProvider: React.FC<{ children: React.ReactNode }> = ({
 
           if (!iframeWindowRef.current) {
             pendingSceneRef.current = payload;
+            setCurrentScenePath(rel);
+            return;
           }
           post({ type: "LOAD_SCENE", ...payload });
           setCurrentScenePath(rel);

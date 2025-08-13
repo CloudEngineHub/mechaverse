@@ -185,13 +185,16 @@ export const DragAndDropProvider: React.FC<DragAndDropProviderProps> = ({
             (path) => filesFromDtMap[path] === usdFile
           );
 
-          // Unified: publish full files map with primary USD path
-          publishRobotFilesUpload({
-            owner,
-            name: repo,
-            files: filesFromDtMap,
-            primary: { type: "USD", path: usdPath || "/" + usdFile.name },
-          });
+          // Delay publishing until after React renders the USD viewer & provider
+          setTimeout(() => {
+            // Unified: publish full files map with primary USD path
+            publishRobotFilesUpload({
+              owner,
+              name: repo,
+              files: filesFromDtMap,
+              primary: { type: "USD", path: usdPath || "/" + usdFile.name },
+            });
+          }, 100);
 
           onComplete();
           return;

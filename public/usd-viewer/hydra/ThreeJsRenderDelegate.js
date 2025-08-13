@@ -34,7 +34,8 @@ class TextureRegistry {
     this.tgaLoader = new TGALoader();
     this.exrLoader = new EXRLoader();
 
-    // HACK get URL ?file parameter again
+    // Determine base URL for external assets
+    // 1) Legacy: from URL ?file param (when not host-managed)
     let urlParams = new URLSearchParams(window.location.search);
     let fileParam = urlParams.get("file");
     if (fileParam) {
@@ -42,10 +43,20 @@ class TextureRegistry {
       if (lastSlash >= 0) fileParam = fileParam.substring(0, lastSlash);
       this.baseUrl = fileParam;
     }
+    // 2) Host-managed: from globally provided asset base
+    if (
+      !this.baseUrl &&
+      typeof window !== "undefined" &&
+      window.__usdAssetBase
+    ) {
+      this.baseUrl = String(window.__usdAssetBase).replace(/\/$/, "");
+    }
   }
 
   getTexture(resourcePath) {
     if (debugTextures) console.log("get texture", resourcePath);
+    // Preserve original path for FS lookups; create a network-normalized variant only for HTTP fallback
+    const originalPath = resourcePath;
     if (this.textures[resourcePath]) {
       return this.textures[resourcePath];
     }
@@ -91,14 +102,10 @@ class TextureRegistry {
       // using TGALoader explicitly
       filetype = "image/tga";
     } else {
-      console.error(
-        "Error when loading texture: unknown filetype",
-        resourcePath
-      );
-      // throw new Error('Unknown filetype');
+      console.error("[USD] unknown filetype", resourcePath);
     }
 
-    this.config.driver().getFile(resourcePath, async (loadedFile) => {
+    this.config.driver().getFile(originalPath, async (loadedFile) => {
       let loader = this.loader;
       if (filetype === "image/tga") loader = this.tgaLoader;
       else if (filetype === "image/x-exr") loader = this.exrLoader;
@@ -109,7 +116,7 @@ class TextureRegistry {
         if (debugTextures)
           console.log(
             "window.driver.getFile",
-            resourcePath,
+            originalPath,
             " => ",
             _loadedFile
           );
@@ -117,8 +124,16 @@ class TextureRegistry {
           let blob = new Blob([_loadedFile.slice(0)], { type: filetype });
           url = URL.createObjectURL(blob);
         } else {
-          if (baseUrl) url = baseUrl + "/" + resourcePath;
-          else url = resourcePath;
+          if (baseUrl) {
+            // Build a clean relative path for network loading
+            let networkPath = originalPath || "";
+            networkPath = networkPath.replace(/^\/+/, "");
+            if (networkPath.startsWith("host/"))
+              networkPath = networkPath.substring(5);
+            url = baseUrl + networkPath;
+          } else {
+            url = originalPath;
+          }
         }
         if (debugTextures)
           console.log(
@@ -130,8 +145,8 @@ class TextureRegistry {
             _loadedFile,
             "baseUrl",
             baseUrl,
-            "resourcePath",
-            resourcePath
+            "originalPath",
+            originalPath
           );
         // Load the texture
         loader.load(
@@ -155,14 +170,25 @@ class TextureRegistry {
       }
 
       if (!loadedFile) {
-        // if the file is not part of the filesystem, we can still try to fetch it from the network
-        if (baseUrl) {
-          console.log(
-            "File not found in filesystem, trying to fetch",
-            resourcePath
-          );
-        } else {
-          textureReject(new Error("Unknown file: " + resourcePath));
+        // If not found in the FS, attempt HTTP only when a base URL is available.
+        if (!baseUrl) {
+          // Avoid noisy errors for USDZ-internal paths (e.g. "foo.usdz[...]") when baseUrl is not set
+          if (String(originalPath).includes(".usdz[")) {
+            // Resolve with a stub 1x1 texture to prevent downstream errors
+            const canvas = document.createElement("canvas");
+            canvas.width = 1;
+            canvas.height = 1;
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+              ctx.fillStyle = "#ffffff";
+              ctx.fillRect(0, 0, 1, 1);
+            }
+            const stubTexture = this.loader.load(canvas.toDataURL());
+            stubTexture.name = originalPath;
+            textureResolve(stubTexture);
+            return;
+          }
+          textureReject(new Error("Unknown file: " + originalPath));
           return;
         }
       }
@@ -636,22 +662,17 @@ class HydraMaterial {
               HydraMaterial.usdPreviewToColorSpaceMap[parameterName] ||
               LinearSRGBColorSpace;
 
-            // console.log("Cloned texture", clonedTexture, "swizzled with", targetSwizzle);
-            // clonedTexture.image = HydraMaterial._swizzleImageChannels(clonedTexture.image, targetSwizzle);
-            // if (materialParameterToTargetChannel[materialParameterMapName] && channel != materialParameterToTargetChannel[materialParameterMapName])
             if (targetSwizzle != "rgba") {
               clonedTexture.image = HydraMaterial._swizzleImageChannels(
                 clonedTexture.image,
                 targetSwizzle
               );
             }
-            // clonedTexture.image = HydraMaterial._swizzleImageChannels(clonedTexture.image, channel, 'g')
 
             clonedTexture.format = HydraMaterial.channelMap[channel];
             clonedTexture.needsUpdate = true;
             if (nodeIn.st && nodeIn.st.nodeIn) {
               const uvData = nodeIn.st.nodeIn;
-              // console.log("Tiling data", uvData);
 
               // TODO this is messed up but works for scale and translation, not really for rotation.
               // Refer to https://github.com/mrdoob/three.js/blob/e5426b0514a1347d7aafca69aa34117503c1be88/examples/jsm/exporters/USDZExporter.js#L461
@@ -671,15 +692,6 @@ class HydraMaterial {
               const yRotationOffset = Math.cos(rotation);
               offset.y = offset.y - (1 - yRotationOffset) * repeat.y;
               offset.x = offset.x - xRotationOffset * repeat.x;
-              // offset.y = 1 - offset.y - repeat.y;
-              /*
-            if (uvData.scale) 
-              clonedTexture.repeat.set(uvData.scale[0], uvData.scale[1]);
-            if (uvData.translation)
-              clonedTexture.offset.set(uvData.translation[0], uvData.translation[1]);
-            if (uvData.rotation)
-            clonedTexture.rotation = uvData.rotation / 180 * Math.PI;   
-            */
 
               clonedTexture.repeat.set(repeat.x, repeat.y);
               clonedTexture.offset.set(offset.x, offset.y);
@@ -942,10 +954,6 @@ class HydraMaterial {
           console.error(
             "Something went wrong with the texture promise; haveMetalnessMap is true but no metalnessMap was loaded."
           );
-      } else if (haveMetalnessMap && haveRoughnessMap) {
-        console.warn(
-          "TODO: [Three USD] separate metalness and roughness textures need to be merged"
-        );
       }
     }
 
@@ -963,14 +971,6 @@ class HydraMaterial {
       );
   }
 }
-
-/*
-class SdfPath {
-  get name() { return this.GetName(); }
-  get absoluteRootPath() { return this.AbsoluteRootPath(); }
-  get reflexiveRelativePath() { return this.ReflexiveRelativePath(); }
-}
-*/
 
 export class ThreeRenderDelegateInterface {
   /**
@@ -1007,14 +1007,20 @@ export class ThreeRenderDelegateInterface {
 
   createSPrim(typeId, id) {
     if (debugPrims) console.log("Creating SPrim: ", typeId, id);
-
-    if (typeId === "material") {
+    const t = String(typeId || "").toLowerCase();
+    if (t === "material") {
       let material = new HydraMaterial(id, this);
       this.materials[id] = material;
       return material;
-    } else {
-      return undefined;
     }
+    // Acknowledge camera and light sprims to prevent hydra warnings
+    if (t === "camera") {
+      return new HydraCamera(id, this);
+    }
+    if (t.includes("light")) {
+      return new HydraLight(id, this);
+    }
+    return undefined;
   }
 
   CommitResources() {

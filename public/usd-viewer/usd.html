@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Mechaverse-USD</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta name="application-name" content="mechaverse-usd" />
+    <meta name="description" content="Mechaverse USD Viewer" />
+    <meta name="keywords" content="USD, Hydra, Three.js" />
+    <meta name="author" content="Mechaverse" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover, user-scalable=no, shrink-to-fit=0" />
+    <link rel="icon" type="image/x-icon" href="/favicon.png" />
+    <style>
+      html, body { height: 100%; margin: 0; }
+      #usd-container { position: absolute; inset: 0; }
+      canvas { display: block; }
+    </style>
+    <script type="importmap">
+      {"imports": {
+        "three": "https://unpkg.com/three@0.163.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.163.0/examples/jsm/"
+      }}
+    </script>
+  </head>
+  <body style="margin:0px; padding:0px; width:100%; height:100vh; overflow:hidden;
+               touch-action: none;
+               -webkit-touch-callout: none;
+               -webkit-user-select: none;
+               -khtml-user-select: none;
+               -moz-user-select: none;
+               -ms-user-select: none;
+               user-select: none;">
+    <h1 hidden></h1>
+    <div id="usd-container"></div>
+    <script type="module">
+      import { init as usdInit } from '/usd-viewer/usd_index.js';
+
+      let handle = null;
+      const container = document.getElementById('usd-container');
+
+      function post(type, payload = {}) {
+        try { parent.postMessage({ type, ...payload }, '*'); } catch {}
+      }
+
+      async function bootstrap() {
+        try {
+          handle = await usdInit({
+            container,
+            hdrPath: '/usd-viewer/environments/neutral.hdr',
+            hostManagedDnd: true,
+            hostManagedUrl: true,
+          });
+        } catch (e) {
+          console.warn('[USD Iframe] init error', e);
+        } finally {
+          post('IFRAME_READY');
+        }
+      }
+
+      // helper to load entries [{ path, buffer(ArrayBuffer) }, ...]
+      async function loadFromEntries(entries, primaryPath) {
+        try {
+          if (!handle) return;
+          // Route through handle method if available
+          if (handle.loadFromEntries) {
+            await handle.loadFromEntries(entries, primaryPath);
+            return;
+          }
+          // Fallback: emulate via DataFiles and then load root
+          const USD = window.USD; // usd_index.js attaches the module to window indirectly when initialized
+          if (!USD) return;
+          // Mount all non-root entries
+          if (entries && entries.length) {
+            const sorted = entries.slice().sort((a, b) => {
+              const aIsUsd = /\.(usd|usdc|usda|usdz)$/i.test(a.path);
+              const bIsUsd = /\.(usd|usdc|usda|usdz)$/i.test(b.path);
+              return (aIsUsd === bIsUsd) ? 0 : (aIsUsd ? 1 : -1);
+            });
+            for (const { path, buffer } of sorted) {
+              const fileName = path.split('/').pop();
+              const dir = path.slice(0, path.length - (fileName?.length || 0)) || '/';
+              USD.FS_createPath('', dir, true, true);
+              USD.FS_createDataFile(dir, fileName, new Uint8Array(buffer), true, false, true);
+            }
+            // determine root
+            let root = primaryPath;
+            if (!root) {
+              for (const { path } of sorted) {
+                if (/\.(usdz|usda|usdc|usd)$/i.test(path)) { root = path; break; }
+              }
+            }
+            if (root && handle.loadFromURL) {
+              await handle.loadFromURL(root);
+            }
+          }
+        } catch (e) {
+          console.warn('[USD Iframe] loadFromEntries error', e);
+        }
+      }
+
+      window.addEventListener('message', async (evt) => {
+        const data = evt.data;
+        if (!data || typeof data !== 'object') return;
+        try {
+          switch (data.type) {
+            case 'USD_LOAD_URL':
+              post('USD_LOADING_START');
+              await handle?.loadFromURL?.(data.url);
+              post('USD_LOADED');
+              break;
+            case 'USD_CLEAR':
+              await handle?.clear?.();
+              break;
+            case 'USD_LOAD_ENTRIES':
+              post('USD_LOADING_START');
+              await loadFromEntries(data.entries || [], data.primaryPath);
+              post('USD_LOADED');
+              break;
+            default:
+              break;
+          }
+        } catch (e) {
+          console.warn('[USD Iframe] message error', e);
+        }
+      });
+
+      bootstrap();
+    </script>
+  </body>
+  </html>
+

@@ -21,7 +21,7 @@ const getUsdModule = globalThis["NEEDLE:USD:GET"];
 
 export function init(
   options = {
-    hdrPath: "usd-viewer/environments/neutral.hdr",
+    hdrPath: "/usd-viewer/environments/neutral.hdr",
     hostManagedDnd: false,
     hostManagedUrl: true,
   }
@@ -31,15 +31,11 @@ export function init(
       throw new Error("init: options.container is required");
     }
     if (!options.hdrPath)
-      options.hdrPath = "usd-viewer/environments/neutral.hdr";
-    const onStatus =
-      typeof options.onStatus === "function" ? options.onStatus : () => {};
+      options.hdrPath = "/usd-viewer/environments/neutral.hdr";
 
     let handle = null;
 
     const run = () => {
-      let scene; // retained for future extensions
-      let defaultTexture; // retained for future extensions
       let USD;
       // Resolve when USD module is ready so drop-handling can await it
       let resolveUsdReady;
@@ -49,9 +45,28 @@ export function init(
 
       const debugFileHandling = false;
 
+      // Install a lightweight fetch rewrite so requests to "/host/..." are
+      // mapped to the current asset base directory of the last loaded URL
+      function installFetchRewrite() {
+        if (window.__usdFetchRewritten) return;
+        const origFetch = window.fetch.bind(window);
+        window.fetch = (input, init) => {
+          try {
+            const url = typeof input === "string" ? input : input?.url;
+            if (url && url.startsWith("/host/") && window.__usdAssetBase) {
+              const mapped = window.__usdAssetBase + url.substring(6);
+              return origFetch(mapped, init);
+            }
+          } catch {}
+          return origFetch(input, init);
+        };
+        window.__usdFetchRewritten = true;
+      }
+
       let params = new URL(document.location).searchParams;
 
-      let filename = params.get("file") || "";
+      // When the host manages URLs/state, ignore any ?file= param entirely
+      let filename = options.hostManagedUrl ? "" : params.get("file") || "";
       let currentDisplayFilename = "";
 
       if (filename) {
@@ -66,10 +81,10 @@ export function init(
       function updateUrl() {
         if (options.hostManagedUrl) return; // don't touch URL; host manages state
         // set quick look link (removed DOM dependency)
-        let indexOfQuery = filename.indexOf("?");
-        let url = filename;
+        // Strip any query for pushState cleanliness
+        const indexOfQuery = filename.indexOf("?");
         if (indexOfQuery >= 0) {
-          url = url.substring(0, indexOfQuery);
+          filename = filename.substring(0, indexOfQuery);
         }
 
         const currentUrl = new URL(window.location.href);
@@ -78,30 +93,47 @@ export function init(
         window.history.pushState({}, filename, currentUrl);
       }
 
-      onStatus("Initializing...");
       const initPromise = setup();
 
       console.log("Loading USD Module...");
-      onStatus("Loading USD Module – this can take a moment...");
       updateUrl();
       try {
         Promise.all([
           getUsdModule({
-            mainScriptUrlOrBlob: "./emHdBindings.js",
+            mainScriptUrlOrBlob: "/usd-viewer/bindings/emHdBindings.js",
             locateFile: (file) => {
               return "/usd-viewer/bindings/" + file;
+            },
+            // Suppress noisy OpenUSD discovery warnings that don't affect functionality
+            printErr: (text) => {
+              try {
+                const s = String(text || "");
+                if (
+                  s.includes("_FindAndInstantiateDiscoveryPlugins") ||
+                  s.includes("/ndr/registry.cpp") ||
+                  s.includes("Failed verification: ' pluginFactory '") ||
+                  // Harmless when loading packaged USDZ read-only; USD attempts to save are blocked
+                  s.includes("_WriteToFile") ||
+                  s.includes("/sdf/layer.cpp") ||
+                  s.includes(
+                    "writing package usdz layer is not allowed through this API"
+                  )
+                ) {
+                  return;
+                }
+              } catch {}
+              // Fallback to standard error output for everything else
+              try {
+                console.error(text);
+              } catch {}
             },
           }),
           initPromise,
         ]).then(async ([Usd]) => {
           USD = Usd;
           if (resolveUsdReady) resolveUsdReady(USD);
-          onStatus("Loading done");
           animate();
-          if (filename) {
-            console.log("Loading File...");
-            onStatus("Loading File " + filename);
-
+          if (!options.hostManagedUrl && filename) {
             clearStage();
             const urlPath = new URL(document.location).searchParams
               .get("file")
@@ -111,20 +143,18 @@ export function init(
         });
       } catch (error) {
         if (error.toString().indexOf("SharedArrayBuffer") >= 0) {
-          let err =
-            "Your current browser doesn't support SharedArrayBuffer which is required for USD.";
-          console.log(error, err);
-          onStatus(err);
+          console.log(
+            error,
+            "Your current browser doesn't support SharedArrayBuffer which is required for USD."
+          );
         } else {
-          let err =
+          console.log(
             "Your current browser doesn't support USD-for-web. Error during initialization: " +
-            error;
-          console.log(err);
-          onStatus(err);
+              error
+          );
         }
       }
 
-      var currentRootFileName = undefined;
       var timeout = 40;
       var endTimeCode = 1;
       var ready = false;
@@ -210,14 +240,34 @@ export function init(
           console.warn("USD not ready; skipping clearStage.");
           return;
         }
-        var allFilePaths = getAllLoadedFiles();
-        console.log("Clearing stage.", allFilePaths);
+        // Try to dispose the driver/stage first to avoid any layer save attempts
+        try {
+          if (window.driver && typeof window.driver.Dispose === "function") {
+            window.driver.Dispose();
+          } else if (
+            window.driver &&
+            typeof window.driver.Destroy === "function"
+          ) {
+            window.driver.Destroy();
+          }
+        } catch {}
+        // Clear the rendered scene graph before touching the virtual FS
+        try {
+          if (window.usdRoot && typeof window.usdRoot.clear === "function") {
+            window.usdRoot.clear();
+          }
+        } catch {}
 
+        // Then unlink files from the in-memory FS, but keep .usdz packages to
+        // avoid triggering writes to packaged layers
+        var allFilePaths = getAllLoadedFiles();
         for (const file of allFilePaths) {
+          const lower = String(file).toLowerCase();
+          if (lower.endsWith(".usdz")) {
+            continue;
+          }
           USD.FS_unlink(file, true);
         }
-
-        window.usdRoot.clear();
       }
 
       function addPath(root, path) {
@@ -257,7 +307,7 @@ export function init(
         let driver = null;
         const delegateConfig = {
           usdRoot: window.usdRoot,
-          paths: new Array(),
+          paths: [],
           driver: () => driver,
         };
 
@@ -269,7 +319,6 @@ export function init(
         }
         window.driver = driver;
         window.driver.Draw();
-        onStatus("");
 
         let stage = window.driver.GetStage();
         if (stage instanceof Promise) {
@@ -287,27 +336,10 @@ export function init(
           String.fromCharCode(stage.GetUpAxis()) === "z" ? -Math.PI / 2 : 0;
 
         fitCameraToSelection(window.camera, window._controls, [window.usdRoot]);
-        console.log("Loading done. Scene: ", window.usdRoot);
         ready = true;
-
-        try {
-          console.log("Currently Exposed API", {
-            Stage: Object.getPrototypeOf(stage),
-            Layer: Object.getPrototypeOf(stage.GetRootLayer()),
-            Prim: Object.getPrototypeOf(stage.GetPrimAtPath("/")),
-          });
-        } catch (e) {
-          console.warn(
-            "Couldn't log state root layer / root prim",
-            e,
-            stage,
-            Object.getPrototypeOf(stage)
-          );
-        }
 
         const root = {};
         addPath(root, "/");
-        console.log("File system", root, USD.FS_analyzePath("/"));
       }
 
       // from https://discourse.threejs.org/t/camera-zoom-to-fit-object/936/24
@@ -387,15 +419,6 @@ export function init(
 
         camera.position.copy(controls.target).sub(direction);
         controls.update();
-
-        console.log("Fitting camera to selection", {
-          size,
-          center,
-          maxSize,
-          distance,
-          near: camera.near,
-          far: camera.far,
-        });
       }
 
       async function setup() {
@@ -427,7 +450,6 @@ export function init(
         // renderer.toneMapping = AgXToneMapping;
         // renderer.toneMappingExposure = 1;
         renderer.toneMapping = NeutralToneMapping;
-        console.log("tonemapping", renderer.toneMapping);
         renderer.shadowMap.enabled = false;
         renderer.shadowMap.type = VSMShadowMap;
         renderer.setClearColor(0x000000, 0); // the default
@@ -882,16 +904,104 @@ export function init(
         loadFromURL: async (url) => {
           try {
             filename = url;
-            onStatus("Loading File " + url + "...");
             updateUrl();
             if (!USD) await usdReady;
             clearStage();
             const parts = url.split("/");
             const fileNameOnly = parts[parts.length - 1];
-            await loadUsdFile(undefined, fileNameOnly, url, true);
+            const ext = (fileNameOnly.split(".").pop() || "").toLowerCase();
+            // For packaged usdz, mount read-only to avoid write attempts
+            if (ext === "usdz") {
+              const res = await fetch(url, { cache: "no-store" });
+              if (!res.ok) throw new Error("Failed to fetch " + url);
+              const buffer = await res.arrayBuffer();
+              const mountDir = "/host/";
+              USD.FS_createPath("", mountDir, true, true);
+              // If a previous package exists at the same path, remove it now that the stage is cleared
+              try {
+                const existing = USD.FS_analyzePath(mountDir + fileNameOnly);
+                if (existing && existing.exists) {
+                  USD.FS_unlink(mountDir + fileNameOnly);
+                }
+              } catch {}
+              USD.FS_createDataFile(
+                mountDir,
+                fileNameOnly,
+                new Uint8Array(buffer),
+                true /* canRead */,
+                false /* canWrite */,
+                true /* canOwn */
+              );
+              await loadUsdFile(
+                mountDir,
+                fileNameOnly,
+                mountDir + fileNameOnly,
+                true
+              );
+            } else {
+              // For usd/usda/usdc, keep URL so relative asset paths resolve via HTTP
+              try {
+                const base = new URL(url, window.location.origin);
+                // ensure base URL ends with '/'
+                const baseDir = base.href.substring(
+                  0,
+                  base.href.lastIndexOf("/") + 1
+                );
+                window.__usdAssetBase = baseDir;
+                installFetchRewrite();
+              } catch {}
+              await loadUsdFile(undefined, fileNameOnly, url, true);
+            }
           } catch (e) {
             console.warn("loadFromURL error", e);
-            onStatus("Error: " + e);
+          }
+        },
+        // Load from array buffer entries mounted into the in-memory FS
+        loadFromEntries: async (entries, primaryPath) => {
+          try {
+            if (!USD) await usdReady;
+            clearStage();
+            // Mount all entries first
+            const sorted = (entries || []).slice().sort((a, b) => {
+              const aExt = (a.path.split(".").pop() || "").toLowerCase();
+              const bExt = (b.path.split(".").pop() || "").toLowerCase();
+              const aIsUsd = ["usd", "usdc", "usda", "usdz"].includes(aExt);
+              const bIsUsd = ["usd", "usdc", "usda", "usdz"].includes(bExt);
+              return aIsUsd === bIsUsd ? 0 : aIsUsd ? 1 : -1;
+            });
+            for (const { path, buffer } of sorted) {
+              const fileName = path.split("/").pop();
+              const dir =
+                path.slice(0, path.length - (fileName?.length || 0)) || "/";
+              USD.FS_createPath("", dir, true, true);
+              USD.FS_createDataFile(
+                dir,
+                fileName,
+                new Uint8Array(buffer),
+                true /* canRead */,
+                false /* canWrite */,
+                true /* canOwn */
+              );
+            }
+            // Determine root
+            let root = primaryPath;
+            if (!root) {
+              for (const e of sorted) {
+                const ext = (e.path.split(".").pop() || "").toLowerCase();
+                if (["usda", "usdc", "usdz", "usd"].includes(ext)) {
+                  root = e.path;
+                  break;
+                }
+              }
+            }
+            if (root) {
+              const fileNameOnly = root.split("/").pop();
+              const dir =
+                root.slice(0, root.length - (fileNameOnly?.length || 0)) || "/";
+              await loadUsdFile(dir, fileNameOnly, root, true);
+            }
+          } catch (e) {
+            console.warn("loadFromEntries error", e);
           }
         },
         // Load from a DataTransfer (e.g., from a drag/drop event)
@@ -901,7 +1011,6 @@ export function init(
             processDataTransfer(dataTransfer);
           } catch (e) {
             console.warn("loadFromDataTransfer error", e);
-            onStatus("Error: " + e);
           }
         },
         // Load directly from a FileList or array of File
@@ -913,7 +1022,6 @@ export function init(
             for (const file of fileArray) testAndLoadFile(file);
           } catch (e) {
             console.warn("loadFromFiles error", e);
-            onStatus("Error: " + e);
           }
         },
         // Load from a map of virtual paths -> File, with an optional primary root file path
@@ -926,7 +1034,6 @@ export function init(
               const base = p.split("/").pop() || p;
               return base !== ".DS_Store" && !base.startsWith("._");
             });
-            onStatus("Loading local USD files...");
             // Load all non-root files first
             for (const [fullPath, file] of entries) {
               if (primaryPath && fullPath === primaryPath) continue;
@@ -934,9 +1041,7 @@ export function init(
             }
             // Then load the primary/root if provided, else try to detect
             if (primaryPath && filesMap[primaryPath]) {
-              onStatus("Loading root USD...");
               await loadFile(filesMap[primaryPath], true, primaryPath);
-              onStatus("");
               return;
             }
             // Detect a reasonable root (prefer .usda)
@@ -952,13 +1057,10 @@ export function init(
               }
             }
             if (root) {
-              onStatus("Loading root USD...");
               await loadFile(root[1], true, root[0]);
-              onStatus("");
             }
           } catch (e) {
             console.warn("loadFromFilesMap error", e);
-            onStatus("Error: " + e);
           }
         },
         // Clear the current stage
@@ -974,9 +1076,12 @@ export function init(
           try {
             window.removeEventListener("resize", onWindowResize);
             try {
-              window.__usdResizeObserver &&
-                window.__usdResizeObserver.disconnect &&
+              if (
+                window.__usdResizeObserver &&
+                typeof window.__usdResizeObserver.disconnect === "function"
+              ) {
                 window.__usdResizeObserver.disconnect();
+              }
             } catch {}
             if (window.renderer && window.renderer.domElement) {
               window.renderer.domElement.removeEventListener(
@@ -1005,7 +1110,7 @@ export function init(
         () => {
           run();
           try {
-            resolveInit && resolveInit(handle);
+            if (resolveInit) resolveInit(handle);
           } catch {}
         },
         { once: true }
@@ -1013,7 +1118,7 @@ export function init(
     } else {
       run();
       try {
-        resolveInit && resolveInit(handle);
+        if (resolveInit) resolveInit(handle);
       } catch {}
     }
   });

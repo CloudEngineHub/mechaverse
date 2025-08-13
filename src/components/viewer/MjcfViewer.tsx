@@ -16,7 +16,6 @@ export default function MjcfViewer() {
   } = useRobot();
   const [isSimulating, setIsSimulating] = useState(false);
 
-  // Ensure we have an MJCF robot selected when this viewer is mounted
   useEffect(() => {
     if (activeRobotType !== "MJCF") {
       setActiveRobotType("MJCF");
@@ -35,7 +34,7 @@ export default function MjcfViewer() {
     if (!iframe) return;
 
     iframe.onerror = (error) => {
-      console.error("❌ Iframe failed to load:", error);
+      console.error("[MJCF] ❌ Iframe failed to load:", error);
     };
 
     const handleMessage = (event: MessageEvent) => {

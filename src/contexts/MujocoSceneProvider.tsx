@@ -35,6 +35,8 @@ export const MujocoSceneProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const { activeRobotType, activeRobotOwner, activeRobotName } = useRobot();
+  const { examples } = useExampleRobots();
+
   const iframeWindowRef = useRef<Window | null>(null);
   const pendingSceneRef = useRef<null | {
     xml?: { fileName: string; content: string };
@@ -44,7 +46,6 @@ export const MujocoSceneProvider: React.FC<{ children: React.ReactNode }> = ({
   const pendingXmlRef = useRef<{ name: string; content: string } | null>(null);
   const [currentScenePath, setCurrentScenePath] = useState<string | null>(null);
   const currentScenePathRef = useRef<string | null>(null);
-  const { examples } = useExampleRobots();
 
   const post = useCallback((data: MujocoMessage) => {
     const target = iframeWindowRef.current;

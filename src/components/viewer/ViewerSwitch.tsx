@@ -6,6 +6,7 @@ import MjcfViewer from "./MjcfViewer";
 import { MujocoSceneProvider } from "@/contexts/MujocoSceneProvider";
 import UrdfViewer from "./UrdfViewer";
 import { UrdfRuntimeProvider } from "@/contexts/UrdfRuntimeContext";
+import { UsdSceneProvider } from "@/contexts/UsdSceneProvider";
 import type { RobotFileType } from "@/types/robot";
 import UsdViewer from "./UsdViewer";
 
@@ -31,14 +32,13 @@ export default function ViewerSwitch() {
         </UrdfRuntimeProvider>
       );
     case "USD":
-      // return <Placeholder label="USD" />;
-      return <UsdViewer />;
+      return (
+        <UsdSceneProvider>
+          <UsdViewer />
+        </UsdSceneProvider>
+      );
 
     default:
-      return (
-        <UrdfRuntimeProvider>
-          <UrdfViewer />
-        </UrdfRuntimeProvider>
-      );
+      return <h1>Viewer not found</h1>;
   }
 }

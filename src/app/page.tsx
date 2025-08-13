@@ -16,22 +16,22 @@ export default function Home() {
   const [showFullScreenDragDrop, setShowFullScreenDragDrop] = useState(false);
 
   return (
-    <div className="w-full h-screen flex flex-col">
-      {/* Navbar */}
-      <Navbar />
-      {/* Main content area */}
-      <ExampleRobotsProvider>
-        <RobotProvider>
-          <main className="flex flex-1 w-full h-[90vh] min-h-0 bg-[#FCF4DD] p-6">
+    <ExampleRobotsProvider>
+      <RobotProvider>
+        <div className="w-full h-screen flex flex-col">
+          {/* Navbar (now inside providers to allow mobile robot menu) */}
+          <Navbar />
+          {/* Main content area */}
+          <main className="flex flex-1 w-full min-h-0 bg-[#FCF4DD] p-6">
             <div className="flex flex-row w-full h-full gap-6">
-              {/* Robot Selector section */}
-              <div className="flex-[2] min-w-0 w-full h-full bg-[#FFFBF1] rounded-3xl overflow-hidden">
+              {/* Robot Selector section - hidden on mobile */}
+              <div className="hidden md:block md:flex-[2] min-w-0 w-full h-full bg-[#FFFBF1] rounded-3xl overflow-hidden">
                 <ViewerControls
                   onUploadClick={() => setShowFullScreenDragDrop(true)}
                 />
               </div>
-              {/* Viewer section */}
-              <div className="flex-[4] min-w-0 h-full flex items-center justify-center bg-[#fef4da] rounded-3xl overflow-hidden">
+              {/* Viewer section - fills available space, especially on mobile */}
+              <div className="flex-4 min-w-0 h-full flex items-center justify-center bg-[#fef4da] rounded-3xl overflow-hidden">
                 <ViewerSwitch />
               </div>
             </div>
@@ -45,8 +45,8 @@ export default function Home() {
               />
             </div>
           )}
-        </RobotProvider>
-      </ExampleRobotsProvider>
-    </div>
+        </div>
+      </RobotProvider>
+    </ExampleRobotsProvider>
   );
 }

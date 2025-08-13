@@ -2,10 +2,9 @@
 
   <include file="right_hand.xml"/>
 
-  <statistic extent="0.3" center="0.3 0 0"/>
+  <statistic extent="0.3" center="0.3 0 0.1"/>
 
   <visual>
-    <rgba haze="0.988 0.957 0.863 1"/>
     <quality shadowsize="8192"/>
     <global azimuth="220" elevation="-30"/>
   </visual>
@@ -20,11 +19,13 @@
   </asset>
 
   <worldbody>
-    <light pos="0 0 1"/>
-    <light pos="0.3 0 1.5" dir="0 0 -1" directional="true"/>
-    <geom name="floor" pos="0 0 -0.1" size="0 0 0.05" type="plane" material="groundplane"/>
-    <body name="object" pos="0.3 0 0.1">
+    <geom name="floor" type="cylinder" size="5 0.05" pos="0 0 -0.05" material="grid" condim="3" contype="1" conaffinity="15"/>
+    <light name="spotlight" mode="targetbodycom" target="rh_palm"
+       diffuse="1 1 1" specular="0.3 0.3 0.3"
+       pos="0 -10 10" cutoff="120" attenuation="0 0 0"/>
+    <body name="object" pos="0.3 0 0.15">
       <freejoint/>
+      <!-- the egg -->
       <geom type="ellipsoid" size="0.03 0.04 0.02" rgba="0.988 0.957 0.863 1" condim="6" priority="1"
           friction="0.5 0.01 0.003"/>
     </body>

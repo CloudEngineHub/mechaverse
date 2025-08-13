@@ -44,16 +44,16 @@
     "owner": "placeholder",
     "repo_name": "shadow-hand",
     "fileType": "MJCF",
-    "path": "/mjcf/shadow_hand/right_hand.xml",
+    "path": "/mjcf/shadow_hand/scene_right.xml",
     "imagePath": "/mjcf/shadow_hand/shadow_hand.png"
   },
   {
-    "display_name": "Lelamp",
+    "display_name": "Flag",
     "owner": "placeholder",
-    "repo_name": "lelamp",
+    "repo_name": "flag",
     "fileType": "MJCF",
-    "path": "/mjcf/lelamp/robot.xml",
-    "imagePath": "/mjcf/lelamp/lelamp.png"
+    "path": "/mjcf/flag/flag.xml",
+    "imagePath": "/mjcf/flag/flag.png"
   },
   {
     "display_name": "Bike",

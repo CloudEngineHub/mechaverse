@@ -50,10 +50,16 @@
     <mesh name="right-foot-crank"   scale="1 1 -1" file="foot-crank.obj"/>
     <mesh name="right-plantar-rod"  scale="1 1 -1" file="plantar-rod.obj"/>
     <mesh name="right-foot"         scale="1 1 -1" file="foot.obj"/>
+    <texture type="skybox" builtin="gradient" rgb1=".3 .5 .7" rgb2="0 0 0" width="32" height="512"/>
+    <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1="0.9882 0.9659 0.8666" rgb2="0.9882 0.9659 0.8666"/>
+    <material name="grid" texture="grid" texrepeat="1 1" texuniform="true" reflectance=".2"/>
   </asset>
 
   <worldbody>
-    <light name="spotlight" mode="targetbodycom" target="cassie-pelvis" pos="0 -1 2"/>
+            <geom name="floor" type="cylinder" size="5 0.05" pos="0 0 -0.05" material="grid" condim="3" contype="1" conaffinity="15"/>
+    <light name="spotlight" mode="targetbodycom" target="cassie-pelvis"
+       diffuse="1 1 1" specular="0.3 0.3 0.3"
+       pos="0 -10 10" cutoff="120" attenuation="0 0 0"/>
     <body name="cassie-pelvis" pos="0 0 1.1" childclass="cassie">
       <camera name="track" pos="0 -3 1" zaxis="0 -1 0.5" mode="track"/>
       <inertial pos="0.05066 0.000346 0.02841" mass="10.33" fullinertia="0.085821 0.049222 0.08626 1.276e-05 -0.00016022 -0.000414"/>

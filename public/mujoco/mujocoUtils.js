@@ -232,46 +232,27 @@ export async function loadSceneFromURL(mujoco, filename, parent) {
       material.opacity != color[3] ||
       material.map != texture
     ) {
-      material = new THREE.MeshPhysicalMaterial({
-        ...{
-          color: new THREE.Color(color[0], color[1], color[2]),
-          transparent: color[3] < 1.0,
-          opacity: color[3],
-          specularIntensity:
-            model.geom_matid[g] != -1
-              ? model.mat_specular[model.geom_matid[g]] * 0.5
-              : undefined,
-          reflectivity:
-            model.geom_matid[g] != -1
-              ? model.mat_reflectance[model.geom_matid[g]]
-              : undefined,
-          roughness:
-            model.geom_matid[g] != -1
-              ? 1.0 - model.mat_shininess[model.geom_matid[g]]
-              : undefined,
-          metalness: model.geom_matid[g] != -1 ? 0.1 : undefined,
-          ...(texture !== undefined ? { map: texture } : {}),
-        },
-      });
+      const materialProps = {
+        color: new THREE.Color(color[0], color[1], color[2]),
+        transparent: color[3] < 1.0,
+        opacity: color[3],
+        ...(texture !== undefined ? { map: texture } : {}),
+      };
+
+      // Only add material properties if they exist
+      if (model.geom_matid[g] != -1) {
+        materialProps.specularIntensity =
+          model.mat_specular[model.geom_matid[g]] * 0.5;
+        materialProps.reflectivity = model.mat_reflectance[model.geom_matid[g]];
+        materialProps.roughness =
+          1.0 - model.mat_shininess[model.geom_matid[g]];
+        materialProps.metalness = 0.1;
+      }
+
+      material = new THREE.MeshPhysicalMaterial(materialProps);
     }
 
-    let mesh = new THREE.Mesh();
-    if (type == 0) {
-      // Ground plane: create a matte material colored by parent theme (fallback to default)
-      const floorHex =
-        (parent && parent.theme && parent.theme.floor) || "#fcf4dc";
-      const matteMaterial = new THREE.MeshPhysicalMaterial({
-        color: new THREE.Color(floorHex),
-        reflectivity: 0,
-        metalness: 0,
-        roughness: 1,
-      });
-      mesh = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), matteMaterial);
-      mesh.rotateX(-Math.PI / 2);
-      mesh.userData.isFloor = true;
-    } else {
-      mesh = new THREE.Mesh(geometry, material);
-    }
+    let mesh = new THREE.Mesh(geometry, material);
 
     mesh.castShadow = g == 0 ? false : true;
     mesh.receiveShadow = type != 7;

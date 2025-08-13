@@ -1,15 +1,17 @@
 import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
-import { DragStateManager } from "./utils/DragStateManager.js";
 import {
   loadSceneFromURL,
   getPosition,
   getQuaternion,
   toMujocoPos,
   standardNormal,
-  ensureMjcfPathWithDependencies,
+  stageMjcfSceneToVfs,
+  removeAllMujocoRoots,
 } from "./mujocoUtils.js";
+import { DragStateManager } from "./utils/DragStateManager.js";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
 import load_mujoco from "./wasm/mujoco_wasm.js";
 
 // Load the MuJoCo Module
@@ -19,16 +21,17 @@ const mujoco = await load_mujoco();
 mujoco.FS.mkdir("/working");
 mujoco.FS.mount(mujoco.MEMFS, { root: "." }, "/working");
 
-export class MujocoSimulator {
+export class Mujoco {
   constructor() {
     this.mujoco = mujoco;
     this.model = null;
     this.state = null;
     this.simulation = null;
 
+    // Define parameters
     this.params = {
       scene: null,
-      paused: false,
+      paused: true,
       help: false,
       ctrlnoiserate: 0.0,
       ctrlnoisestd: 0.0,
@@ -56,7 +59,7 @@ export class MujocoSimulator {
     this.camera.position.set(2.0, 1.7, 1.7);
     this.scene.add(this.camera);
 
-    // Default theme consistent with viewer
+    // Theme defaults; can be overridden by parent messages
     this.theme = {
       sceneBg: "#fef4da",
       floor: "#fcf4dc",
@@ -65,32 +68,21 @@ export class MujocoSimulator {
     };
     this.scene.background = new THREE.Color(this.theme.sceneBg);
 
-    this.ambientLight = new THREE.AmbientLight(
-      new THREE.Color(this.theme.ambient),
-      0.35
-    );
-    this.ambientLight.name = "AmbientLight";
-    this.scene.add(this.ambientLight);
+    // Centralized fill lights based on default theme
+    this._createFillLights();
 
-    // Uniform hemisphere fill light
-    this.hemiLight = new THREE.HemisphereLight(
-      new THREE.Color(this.theme.hemi),
-      new THREE.Color(this.theme.hemi),
-      0.3
-    );
-    this.hemiLight.position.set(0, 1, 0);
-    this.hemiLight.name = "HemisphereLight";
-    this.scene.add(this.hemiLight);
-
+    // TODO: Might need high-performence powerPreference
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
-      powerPreference: "high-performance",
+      powerPreference: "default",
     });
+
     // Cap device pixel ratio for performance on high-DPI displays
     const MAX_PIXEL_RATIO = 1.5;
     this.renderer.setPixelRatio(
       Math.min(MAX_PIXEL_RATIO, window.devicePixelRatio)
     );
+
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -117,35 +109,25 @@ export class MujocoSimulator {
     );
   }
 
-  async init() {
-    try {
-      // Defer loading; parent will request a scene
+  _createFillLights() {
+    if (this.ambientLight) this.scene.remove(this.ambientLight);
+    if (this.hemiLight) this.scene.remove(this.hemiLight);
 
-      this.scene.background = new THREE.Color(this.theme.sceneBg);
+    this.ambientLight = new THREE.AmbientLight(
+      new THREE.Color(this.theme.ambient),
+      0.2
+    );
+    this.ambientLight.name = "AmbientLight";
+    this.scene.add(this.ambientLight);
 
-      const mujocoRoot = this.scene.getObjectByName("MuJoCo Root");
-      if (mujocoRoot) {
-        mujocoRoot.traverse((obj) => {
-          if (obj.isMesh) {
-            if (
-              obj.geometry?.type === "PlaneGeometry" ||
-              obj.constructor.name === "Reflector"
-            ) {
-              if (obj.material && obj.material.color) {
-                obj.material.color.set(this.theme.floor);
-                obj.material.map = null;
-                obj.material.reflectivity = 0;
-                obj.material.metalness = 0;
-                obj.material.needsUpdate = true;
-              }
-            }
-          }
-        });
-      }
-    } catch (error) {
-      console.error("❌ Error in init() method:", error);
-      console.error("Stack trace:", error.stack);
-    }
+    this.hemiLight = new THREE.HemisphereLight(
+      new THREE.Color(this.theme.hemi),
+      new THREE.Color(this.theme.hemi),
+      0.1
+    );
+    this.hemiLight.position.set(0, 1, 0);
+    this.hemiLight.name = "HemisphereLight";
+    this.scene.add(this.hemiLight);
   }
 
   onWindowResize() {
@@ -160,6 +142,7 @@ export class MujocoSimulator {
 
   render(timeMS) {
     if (!this.model || !this.simulation) {
+      // Nothing loaded yet; still render background/empty scene
       this.controls.update();
       this.renderer.render(this.scene, this.camera);
       return;
@@ -167,6 +150,7 @@ export class MujocoSimulator {
     this.controls.update();
 
     if (!this.params["paused"]) {
+      // If not paused, simulate the physics
       let timestep = this.model.getOptions().timestep;
       if (timeMS - this.mujoco_time > 35.0) {
         this.mujoco_time = timeMS;
@@ -227,6 +211,7 @@ export class MujocoSimulator {
         this.mujoco_time += timestep * 1000.0;
       }
     } else if (this.params["paused"]) {
+      // If paused, update the drag state manager
       this.dragStateManager.update();
       let dragged = this.dragStateManager.physicsObject;
       if (dragged && dragged.bodyID) {
@@ -259,6 +244,7 @@ export class MujocoSimulator {
       this.simulation.forward();
     }
 
+    // Update body transforms from current simulation state
     for (let b = 0; b < this.model.nbody; b++) {
       if (this.bodies[b]) {
         getPosition(this.simulation.xpos, b, this.bodies[b].position);
@@ -267,6 +253,7 @@ export class MujocoSimulator {
       }
     }
 
+    // Update light transforms.
     for (let l = 0; l < this.model.nlight; l++) {
       if (this.lights[l]) {
         getPosition(this.simulation.light_xpos, l, this.lights[l].position);
@@ -275,83 +262,82 @@ export class MujocoSimulator {
       }
     }
 
+    // Render the scene
     this.renderer.render(this.scene, this.camera);
   }
 }
 
-console.log("🚀 MuJoCo Simulator starting up...");
-let demo = new MujocoSimulator();
-await demo.init();
-console.log("✅ Simulator initialized, notifying parent");
-
-// Notify parent when ready (to match render_only)
+let viewer = new Mujoco();
+// Signal readiness to the parent so it can send initial scene messages safely
 window.parent.postMessage({ type: "IFRAME_READY" }, "*");
 
-// Handle messages similar to main_viewer.js with load public scene and reset
+// Set up message handling for parent-iframe communication
 window.addEventListener("message", async (event) => {
-  // Received message from parent (sim)
+  // Received message from parent
+
   try {
     switch (event.data.type) {
       case "RESET_POSE":
-        if (demo?.simulation) {
-          demo.simulation.resetData();
-          demo.simulation.forward();
+        if (viewer?.simulation) {
+          viewer.simulation.resetData();
+          viewer.simulation.forward();
         }
         break;
       case "PAUSE_SIMULATION":
-        if (demo?.params) {
-          demo.params.paused = true;
+        if (viewer?.params) {
+          viewer.params.paused = true;
         }
         break;
       case "RESUME_SIMULATION":
-        if (demo?.params) {
-          demo.params.paused = false;
+        if (viewer?.params) {
+          viewer.params.paused = false;
         }
         break;
-      case "LOAD_PUBLIC_SCENE":
-        console.log("📂 Loading public scene:", event.data.path);
-        try {
-          // Load MJCF from public/mjcf on demand with dependencies
-          await ensureMjcfPathWithDependencies(mujoco, event.data.path);
-          console.log("✅ Dependencies loaded, loading scene from URL");
-          [demo.model, demo.state, demo.simulation, demo.bodies, demo.lights] =
-            await loadSceneFromURL(mujoco, event.data.path, demo);
-          console.log("✅ Scene loaded successfully");
-          // No GUI setup - controls handled by parent
-          demo.simulation.resetData();
-          demo.simulation.forward();
-          console.log("✅ Scene reset and forwarded");
-          window.parent.postMessage(
-            { type: "SCENE_LOADED", sceneName: event.data.path },
-            "*"
-          );
-        } catch (sceneError) {
-          console.error("❌ Error loading scene:", sceneError);
-          window.parent.postMessage(
-            { type: "ERROR", error: sceneError.message },
-            "*"
-          );
-        }
-        break;
-      case "LOAD_XML_CONTENT":
-        mujoco.FS.writeFile(
-          "/working/" + event.data.fileName,
-          event.data.content
+      case "LOAD_SCENE":
+        removeAllMujocoRoots(viewer);
+        // Stage provided scene content (xml/files) only; no public fetching
+        const normalizedRoot = await stageMjcfSceneToVfs(
+          mujoco,
+          event.data.root,
+          {
+            files: event.data.files || [],
+            xml: event.data.xml || null,
+          }
         );
-        [demo.model, demo.state, demo.simulation, demo.bodies, demo.lights] =
-          await loadSceneFromURL(mujoco, event.data.fileName, demo);
-        demo.simulation.resetData();
-        demo.simulation.forward();
+        [
+          viewer.model,
+          viewer.state,
+          viewer.simulation,
+          viewer.bodies,
+          viewer.lights,
+        ] = await loadSceneFromURL(mujoco, normalizedRoot, viewer);
+
+        viewer.simulation.resetData();
+        viewer.simulation.forward();
+
+        // Default to paused when a scene is loaded
+        if (viewer?.params) viewer.params.paused = true;
+
         window.parent.postMessage(
-          { type: "SCENE_LOADED", sceneName: event.data.fileName },
+          { type: "SCENE_LOADED", sceneName: normalizedRoot },
           "*"
         );
         break;
       default:
-      // Unknown message type
+        // Unknown message type
+        console.warn("Unknown message type:", event.data.type);
     }
   } catch (error) {
+    // Log the full error object for better debugging of Emscripten exceptions
     console.error("❌ Error handling message:", error);
-    window.parent.postMessage({ type: "ERROR", error: error.message }, "*");
+
+    // Notify parent of error with a stringified fallback to capture non-Error throws
+    window.parent.postMessage(
+      {
+        type: "ERROR",
+        error: String(error),
+      },
+      "*"
+    );
   }
 });

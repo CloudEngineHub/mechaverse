@@ -1,224 +1,5 @@
 import * as THREE from "three";
 
-export async function reloadFunc() {
-  // Delete the old scene and load the new scene
-  this.scene.remove(this.scene.getObjectByName("MuJoCo Root"));
-  [this.model, this.state, this.simulation, this.bodies, this.lights] =
-    await loadSceneFromURL(this.mujoco, this.params.scene, this);
-
-  this.simulation.forward();
-  for (let i = 0; i < this.updateGUICallbacks.length; i++) {
-    this.updateGUICallbacks[i](this.model, this.simulation, this.params);
-  }
-}
-
-/** @param {MujocoSimulator} parentContext*/
-export function setupGUI(parentContext) {
-  // Make sure we reset the camera when the scene is changed or reloaded.
-  parentContext.updateGUICallbacks.length = 0;
-  parentContext.updateGUICallbacks.push(() => {
-    // TODO: Use free camera parameters from MuJoCo
-    parentContext.camera.position.set(2.0, 1.7, 1.7);
-    parentContext.controls.target.set(0, 0.7, 0);
-    parentContext.controls.update();
-  });
-
-  // Add scene selection dropdown.
-  let reload = reloadFunc.bind(parentContext);
-
-  let simulationFolder = parentContext.gui.addFolder("Simulation");
-
-  // Add pause simulation checkbox.
-  // Parameters:
-  //  Under "Simulation" folder.
-  //  Name: "Pause Simulation".
-  //  When paused, a "pause" text in white is displayed in the top left corner.
-  //  Can also be triggered by pressing the spacebar.
-  const pauseSimulation = simulationFolder
-    .add(parentContext.params, "paused")
-    .name("Pause Simulation");
-  pauseSimulation.onChange((value) => {
-    if (value) {
-      const pausedText = document.createElement("div");
-      pausedText.style.position = "absolute";
-      pausedText.style.top = "10px";
-      pausedText.style.left = "10px";
-      pausedText.style.color = "white";
-      pausedText.style.font = "normal 18px Arial";
-      pausedText.innerHTML = "pause";
-      parentContext.container.appendChild(pausedText);
-    } else {
-      parentContext.container.removeChild(parentContext.container.lastChild);
-    }
-  });
-  document.addEventListener("keydown", (event) => {
-    if (event.code === "Space") {
-      parentContext.params.paused = !parentContext.params.paused;
-      pauseSimulation.setValue(parentContext.params.paused);
-      event.preventDefault();
-    }
-  });
-  actionInnerHTML += "Play / Pause<br>";
-  keyInnerHTML += "Space<br>";
-
-  // Add reload model button.
-  // Parameters:
-  //  Under "Simulation" folder.
-  //  Name: "Reload".
-  //  When pressed, calls the reload function.
-  //  Can also be triggered by pressing ctrl + L.
-  simulationFolder
-    .add(
-      {
-        reload: () => {
-          reload();
-        },
-      },
-      "reload"
-    )
-    .name("Reload");
-  document.addEventListener("keydown", (event) => {
-    if (event.ctrlKey && event.code === "KeyL") {
-      reload();
-      event.preventDefault();
-    }
-  });
-  actionInnerHTML += "Reload XML<br>";
-  keyInnerHTML += "Ctrl L<br>";
-
-  // Add reset simulation button.
-  // Parameters:
-  //  Under "Simulation" folder.
-  //  Name: "Reset".
-  //  When pressed, resets the simulation to the initial state.
-  //  Can also be triggered by pressing backspace.
-  const resetSimulation = () => {
-    parentContext.simulation.resetData();
-    parentContext.simulation.forward();
-  };
-  simulationFolder
-    .add(
-      {
-        reset: () => {
-          resetSimulation();
-        },
-      },
-      "reset"
-    )
-    .name("Reset");
-  document.addEventListener("keydown", (event) => {
-    if (event.code === "Backspace") {
-      resetSimulation();
-      event.preventDefault();
-    }
-  });
-  actionInnerHTML += "Reset simulation<br>";
-  keyInnerHTML += "Backspace<br>";
-
-  // Add keyframe slider.
-  let nkeys = parentContext.model.nkey;
-  let keyframeGUI = simulationFolder
-    .add(parentContext.params, "keyframeNumber", 0, nkeys - 1, 1)
-    .name("Load Keyframe")
-    .listen();
-  keyframeGUI.onChange((value) => {
-    if (value < parentContext.model.nkey) {
-      parentContext.simulation.qpos.set(
-        parentContext.model.key_qpos.slice(
-          value * parentContext.model.nq,
-          (value + 1) * parentContext.model.nq
-        )
-      );
-    }
-  });
-  parentContext.updateGUICallbacks.push(() => {
-    let nkeys = parentContext.model.nkey;
-    if (nkeys > 0) {
-      keyframeGUI.max(nkeys - 1);
-      keyframeGUI.domElement.style.opacity = 1.0;
-    } else {
-      // Disable keyframe slider if no keyframes are available.
-      keyframeGUI.max(0);
-      keyframeGUI.domElement.style.opacity = 0.5;
-    }
-  });
-
-  // Add sliders for ctrlnoiserate and ctrlnoisestd; min = 0, max = 2, step = 0.01.
-  simulationFolder
-    .add(parentContext.params, "ctrlnoiserate", 0.0, 2.0, 0.01)
-    .name("Noise rate");
-  simulationFolder
-    .add(parentContext.params, "ctrlnoisestd", 0.0, 2.0, 0.01)
-    .name("Noise scale");
-
-  let textDecoder = new TextDecoder("utf-8");
-  let nullChar = textDecoder.decode(new ArrayBuffer(1));
-
-  // Add actuator sliders.
-  let actuatorFolder = simulationFolder.addFolder("Actuators");
-  const addActuators = (model, simulation) => {
-    let act_range = model.actuator_ctrlrange;
-    let actuatorGUIs = [];
-    for (let i = 0; i < model.nu; i++) {
-      if (!model.actuator_ctrllimited[i]) {
-        continue;
-      }
-      let name = textDecoder
-        .decode(
-          parentContext.model.names.subarray(
-            parentContext.model.name_actuatoradr[i]
-          )
-        )
-        .split(nullChar)[0];
-
-      parentContext.params[name] = 0.0;
-      let actuatorGUI = actuatorFolder
-        .add(
-          parentContext.params,
-          name,
-          act_range[2 * i],
-          act_range[2 * i + 1],
-          0.01
-        )
-        .name(name)
-        .listen();
-      actuatorGUIs.push(actuatorGUI);
-      actuatorGUI.onChange((value) => {
-        simulation.ctrl[i] = value;
-      });
-    }
-    return actuatorGUIs;
-  };
-  let actuatorGUIs = addActuators(
-    parentContext.model,
-    parentContext.simulation,
-    parentContext.params
-  );
-  parentContext.updateGUICallbacks.push((model, simulation) => {
-    for (let i = 0; i < actuatorGUIs.length; i++) {
-      actuatorGUIs[i].destroy();
-    }
-    actuatorGUIs = addActuators(model, simulation, parentContext.params);
-  });
-  actuatorFolder.close();
-
-  // Add function that resets the camera to the default position.
-  // Can be triggered by pressing ctrl + A.
-  document.addEventListener("keydown", (event) => {
-    if (event.ctrlKey && event.code === "KeyA") {
-      // TODO: Use free camera parameters from MuJoCo
-      parentContext.camera.position.set(2.0, 1.7, 1.7);
-      parentContext.controls.target.set(0, 0.7, 0);
-      parentContext.controls.update();
-      event.preventDefault();
-    }
-  });
-  actionInnerHTML += "Reset free camera<br>";
-  keyInnerHTML += "Ctrl A<br>";
-
-  parentContext.gui.open();
-}
-
 /** Loads a scene for MuJoCo
  * @param {mujoco} mujoco This is a reference to the mujoco namespace object
  * @param {string} filename This is the name of the .xml file in the /working/ directory of the MuJoCo/Emscripten Virtual File System
@@ -562,20 +343,16 @@ export async function loadSceneFromURL(mujoco, filename, parent) {
       // Derive a sensible default name if not present
       try {
         bodies[b].name = names[b + 1] || `body_${b}`;
-      } catch (_) {
+      } catch {
         bodies[b].name = `body_${b}`;
       }
       bodies[b].bodyID = b;
       bodies[b].has_custom_mesh = false;
     }
 
-    // Attach bodies to root (or to body 0 if available), avoiding undefined adds
-    if (b === 0 || !bodies[0]) {
-      // Attach directly to MuJoCo root until body[0] is available
-      mujocoRoot.add(bodies[b]);
-    } else {
-      bodies[0].add(bodies[b]);
-    }
+    // Attach all bodies directly under the root. We update with world transforms,
+    // so nesting would double-apply transforms and scramble the initial pose.
+    mujocoRoot.add(bodies[b]);
   }
 
   parent.mujocoRoot = mujocoRoot;
@@ -588,7 +365,7 @@ export async function loadSceneFromURL(mujoco, filename, parent) {
  * - Supports recursive <include file="..."/>
  * - Fetches assets referenced via <asset> elements (e.g., <mesh file=...>, <texture file=...>)
  */
-export async function ensureMjcfPathWithDependencies(mujoco, path) {
+export async function stageMjcfSceneToVfs(mujoco, path, options = {}) {
   const basePrefix = "../mjcf/";
   async function ensureDir(fullPath) {
     const parts = fullPath.split("/");
@@ -611,14 +388,88 @@ export async function ensureMjcfPathWithDependencies(mujoco, path) {
 
   const visited = new Set();
 
+  // Write uploaded scene files (if provided)
+  // options: { files?: { path: string, buffer: ArrayBuffer|Uint8Array|Blob|string }[], xml?: { fileName: string, content: string } }
+  if (Array.isArray(options.files) && options.files.length > 0) {
+    for (const entry of options.files) {
+      if (!entry?.path) continue;
+      const relPath = entry.path.startsWith("/")
+        ? entry.path.slice(1)
+        : entry.path;
+      const vfsPath = "/working/" + relPath;
+      await ensureDir(vfsPath);
+
+      const lower = relPath.toLowerCase();
+      const isBinary = [
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".bmp",
+        ".gif",
+        ".tga",
+        ".dds",
+        ".ktx",
+        ".ktx2",
+        ".hdr",
+        ".exr",
+        ".obj",
+        ".stl",
+        ".ply",
+        ".glb",
+        ".gltf",
+        ".skn",
+        ".bin",
+      ].some((ext) => lower.endsWith(ext));
+
+      const buf = entry.buffer;
+      if (buf instanceof Uint8Array) {
+        mujoco.FS.writeFile(vfsPath, buf);
+      } else if (buf instanceof ArrayBuffer) {
+        mujoco.FS.writeFile(vfsPath, new Uint8Array(buf));
+      } else if (typeof Blob !== "undefined" && buf instanceof Blob) {
+        mujoco.FS.writeFile(vfsPath, new Uint8Array(await buf.arrayBuffer()));
+      } else if (typeof buf === "string" && !isBinary) {
+        mujoco.FS.writeFile(vfsPath, buf);
+      } else if (buf != null) {
+        // Fallback: try to coerce to bytes if possible
+        try {
+          const maybeBytes = new Uint8Array(buf);
+          mujoco.FS.writeFile(vfsPath, maybeBytes);
+        } catch {
+          // Last resort: write empty to at least create the file
+          mujoco.FS.writeFile(vfsPath, new Uint8Array());
+        }
+      } else {
+        // No buffer provided; create empty file placeholder
+        mujoco.FS.writeFile(vfsPath, new Uint8Array());
+      }
+    }
+  }
+
+  if (options.xml?.fileName && options.xml?.content != null) {
+    const rel = options.xml.fileName.startsWith("/")
+      ? options.xml.fileName.slice(1)
+      : options.xml.fileName;
+    await ensureDir("/working/" + rel);
+    mujoco.FS.writeFile("/working/" + rel, options.xml.content);
+  }
+
   async function loadXmlRecursive(relPath) {
     const vfsPath = "/working/" + relPath;
     if (visited.has(relPath)) return;
     visited.add(relPath);
     if (!mujoco.FS.analyzePath(vfsPath).exists) {
-      const res = await fetch(basePrefix + relPath, { cache: "no-store" });
-      if (!res.ok) throw new Error("Failed to fetch " + relPath);
-      await writeText(vfsPath, await res.text());
+      // If we are staging an uploaded scene, do not fetch from public; treat missing file as an error
+      const isUploadMode =
+        (Array.isArray(options.files) && options.files.length > 0) ||
+        !!options.xml;
+      if (isUploadMode) {
+        throw new Error(`Missing referenced XML in uploaded scene: ${relPath}`);
+      } else {
+        const res = await fetch(basePrefix + relPath, { cache: "no-store" });
+        if (!res.ok) throw new Error("Failed to fetch " + relPath);
+        await writeText(vfsPath, await res.text());
+      }
     }
 
     // Parse and find dependencies
@@ -636,39 +487,88 @@ export async function ensureMjcfPathWithDependencies(mujoco, path) {
     }
 
     // Resolve <asset> file references (mesh, texture, hfield, skin)
-    // Respect optional compiler meshdir if present
-    const compilerEl = doc.querySelector("compiler[meshdir]");
+    // Respect optional compiler directories: meshdir, texturedir, skindir, hfielddir.
+    const compilerEl = doc.querySelector("compiler");
     const meshdir = compilerEl?.getAttribute("meshdir") || "assets";
-    const assetFileSelectors = [
+    const texturedir = compilerEl?.getAttribute("texturedir") || meshdir;
+    const skindir = compilerEl?.getAttribute("skindir") || meshdir;
+    const hfielddir = compilerEl?.getAttribute("hfielddir") || texturedir;
+
+    const dirForTag = (tagName) => {
+      switch (tagName) {
+        case "mesh":
+          return meshdir;
+        case "texture":
+          return texturedir;
+        case "skin":
+          return skindir;
+        case "hfield":
+          return hfielddir;
+        default:
+          return meshdir;
+      }
+    };
+
+    const binaryExts = [
+      ".png",
+      ".jpg",
+      ".jpeg",
+      ".bmp",
+      ".gif",
+      ".tga",
+      ".dds",
+      ".ktx",
+      ".ktx2",
+      ".hdr",
+      ".exr",
+      ".obj",
+      ".stl",
+      ".ply",
+      ".glb",
+      ".gltf",
+      ".skn",
+      ".bin",
+    ];
+
+    const assetSelectors = [
       "mesh[file]",
       "texture[file]",
       "hfield[file]",
       "skin[file]",
     ];
-    for (const sel of assetFileSelectors) {
+    for (const sel of assetSelectors) {
       const nodes = Array.from(doc.querySelectorAll(sel));
       for (const n of nodes) {
         const file = n.getAttribute("file");
         if (!file) continue;
-        // If file already looks like a path, still prefix meshdir (MuJoCo does meshdir + file)
-        const assetRel = joinRelative(relPath, `${meshdir}/${file}`);
+
+        const tag = n.tagName.toLowerCase();
+        const baseDir = dirForTag(tag);
+        const combined = baseDir ? `${baseDir}/${file}` : file;
+        const assetRel = joinRelative(relPath, combined);
         const fullVfs = "/working/" + assetRel;
+
         if (!mujoco.FS.analyzePath(fullVfs).exists) {
-          const url = basePrefix + assetRel;
-          const r = await fetch(url, { cache: "no-store" });
-          if (!r.ok) throw new Error("Failed to fetch asset " + assetRel);
-          const lower = assetRel.toLowerCase();
-          if (
-            lower.endsWith(".png") ||
-            lower.endsWith(".jpg") ||
-            lower.endsWith(".jpeg") ||
-            lower.endsWith(".obj") ||
-            lower.endsWith(".stl") ||
-            lower.endsWith(".skn")
-          ) {
-            await writeBinary(fullVfs, r);
+          const isUploadMode =
+            (Array.isArray(options.files) && options.files.length > 0) ||
+            !!options.xml;
+          if (isUploadMode) {
+            // In upload mode, require assets to have been provided
+            throw new Error(
+              `Missing referenced asset in uploaded scene: ${assetRel}`
+            );
           } else {
-            await writeText(fullVfs, await r.text());
+            const url = basePrefix + assetRel;
+            const r = await fetch(url, { cache: "no-store" });
+            if (!r.ok) throw new Error("Failed to fetch asset " + assetRel);
+
+            const lower2 = assetRel.toLowerCase();
+            const isBinary2 = binaryExts.some((ext) => lower2.endsWith(ext));
+            if (isBinary2) {
+              await writeBinary(fullVfs, r);
+            } else {
+              await writeText(fullVfs, await r.text());
+            }
           }
         }
       }
@@ -699,7 +599,26 @@ export async function ensureMjcfPathWithDependencies(mujoco, path) {
     return [...baseParts, relative].join("/");
   }
 
-  await loadXmlRecursive(path);
+  // Determine root XML to stage
+  let rootRel = (path || "").replace(/^\/+/, "");
+  if (!rootRel) {
+    if (options.xml?.fileName) {
+      rootRel = options.xml.fileName.replace(/^\/+/, "");
+    } else if (Array.isArray(options.files)) {
+      const xmlEntry = options.files.find((f) =>
+        (f?.path || "").toLowerCase().endsWith(".xml")
+      );
+      if (xmlEntry?.path) rootRel = xmlEntry.path.replace(/^\/+/, "");
+    }
+  }
+  if (!rootRel) {
+    throw new Error("stageMjcfSceneToVfs: No root XML provided or detected");
+  }
+
+  await loadXmlRecursive(rootRel);
+
+  // Return the normalized root so callers can use it with loadSceneFromURL
+  return rootRel;
 }
 
 /** Access the vector at index, swizzle for three.js, and apply to the target THREE.Vector3
@@ -756,4 +675,15 @@ export function standardNormal() {
     Math.sqrt(-2.0 * Math.log(Math.random())) *
     Math.cos(2.0 * Math.PI * Math.random())
   );
+}
+
+export function removeAllMujocoRoots(viewer) {
+  try {
+    let root;
+    while ((root = viewer.scene.getObjectByName("MuJoCo Root"))) {
+      viewer.scene.remove(root);
+    }
+  } catch (e) {
+    console.warn("Failed to clear MuJoCo roots", e);
+  }
 }

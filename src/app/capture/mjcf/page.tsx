@@ -26,7 +26,7 @@ export default function CaptureMJCF() {
 
     // Load scene, make transparent, fit iso
     iframeRef.current.contentWindow?.postMessage(
-      { type: "LOAD_PUBLIC_SCENE", path: scene },
+      { type: "LOAD_EXAMPLE_SCENE", path: scene },
       "*"
     );
 

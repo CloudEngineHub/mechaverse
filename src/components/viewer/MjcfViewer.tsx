@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMujocoScene } from "@/hooks/useMujocoScene";
 import { useRobot } from "@/hooks/useRobot";
-import { RotateCcw, Play, Square, Pause } from "lucide-react";
+import { RotateCcw, Play, Pause } from "lucide-react";
 
 export default function MjcfViewer() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -15,8 +15,6 @@ export default function MjcfViewer() {
     setActiveRobotName,
   } = useRobot();
   const [isSimulating, setIsSimulating] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [iframeKey, setIframeKey] = useState(0);
 
   // Ensure we have an MJCF robot selected when this viewer is mounted
   useEffect(() => {
@@ -34,7 +32,7 @@ export default function MjcfViewer() {
 
   useEffect(() => {
     const iframe = iframeRef.current;
-    console.log("🔧 Setting up iframe effect for key:", iframeKey, iframe?.src);
+    console.log("🔧 Setting up iframe effect", iframe?.src);
     if (!iframe) return;
 
     iframe.onload = () => {
@@ -57,9 +55,12 @@ export default function MjcfViewer() {
           console.error("❌ Iframe error:", event.data.error);
           break;
         }
-        case "SCENE_LOADED":
+        case "SCENE_LOADED": {
+          // Ensure UI shows paused by default after any scene load
+          setIsSimulating(false);
+          break;
+        }
         default:
-          // No-op
           break;
       }
     };
@@ -67,11 +68,11 @@ export default function MjcfViewer() {
     window.addEventListener("message", handleMessage);
 
     return () => {
-      console.log("🧹 Cleaning up iframe effect for key:", iframeKey);
+      console.log("🧹 Cleaning up iframe effect");
       window.removeEventListener("message", handleMessage);
       registerIframeWindow(null);
     };
-  }, [registerIframeWindow, iframeKey]);
+  }, [registerIframeWindow]);
 
   return (
     <div className="w-full h-full flex flex-row relative">
@@ -89,13 +90,8 @@ export default function MjcfViewer() {
         }}
       >
         <iframe
-          key={iframeKey}
           ref={iframeRef}
-          src={
-            isSimulating
-              ? "/mujoco/mujoco-simulator.html"
-              : "/mujoco/mujoco-viewer.html"
-          }
+          src={"/mujoco/mujoco.html"}
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads"
           style={{
             width: "100%",
@@ -122,51 +118,21 @@ export default function MjcfViewer() {
 
         {/* Simulation Control Buttons */}
         <div className="absolute bottom-3 right-3 z-10 flex gap-2">
-          {isSimulating && (
-            <button
-              onClick={() => {
-                if (isPaused) {
-                  resumeSimulation();
-                  setIsPaused(false);
-                } else {
-                  pauseSimulation();
-                  setIsPaused(true);
-                }
-              }}
-              aria-label={isPaused ? "Resume simulation" : "Pause simulation"}
-              className="flex items-center justify-center text-sm gap-2 text-brand bg-highlight border-none rounded-lg p-2 cursor-pointer hover:bg-highlight/80 transition-all"
-            >
-              {isPaused ? (
-                <Play size={17} className="text-[#968612]" />
-              ) : (
-                <Pause size={17} className="text-[#968612]" />
-              )}
-              {isPaused ? "Resume" : "Pause"}
-            </button>
-          )}
-
           <button
             onClick={() => {
-              const newSimulating = !isSimulating;
-              console.log("🔄 Switching simulation mode:", {
-                from: isSimulating,
-                to: newSimulating,
-              });
-              setIsSimulating(newSimulating);
-              if (!newSimulating) {
-                // When stopping simulation, reset pause state
-                setIsPaused(false);
+              if (isSimulating) {
+                pauseSimulation();
+                setIsSimulating(false);
+              } else {
+                setIsSimulating(true);
+                resumeSimulation();
               }
-              // Force iframe reload when switching modes
-              setIframeKey((prev) => prev + 1);
-              // Unregister the current iframe window since we're switching
-              registerIframeWindow(null);
             }}
-            aria-label={isSimulating ? "Stop simulation" : "Start simulation"}
+            aria-label={isSimulating ? "Pause simulation" : "Resume simulation"}
             className="flex items-center justify-center text-sm gap-2 text-brand bg-highlight border-none rounded-lg p-2 cursor-pointer hover:bg-highlight/80 transition-all"
           >
             {isSimulating ? (
-              <Square size={17} className="text-[#968612]" />
+              <Pause size={17} className="text-[#968612]" />
             ) : (
               <Play size={17} className="text-[#968612]" />
             )}

@@ -121,7 +121,7 @@ export default function MjcfViewer() {
               }
             }}
             aria-label={isSimulating ? "Pause simulation" : "Resume simulation"}
-            className="flex items-center justify-center text-sm gap-2 text-brand bg-highlight border-none rounded-lg p-2 cursor-pointer hover:bg-highlight/80 transition-all"
+            className="flex items-center justify-center font-mono text-sm gap-2 text-brand bg-highlight border-none rounded-lg p-2 cursor-pointer hover:bg-highlight/80 transition-all"
           >
             {isSimulating ? (
               <Pause size={17} className="text-[#968612]" />

@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
-    "start": "next start",
+    "export": "next export",
+    "start": "next start -p ${PORT:-8080}",
     "lint": "next lint",
     "capture": "tsx scripts/capture-screenshots.ts",
     "bg:remove": "tsx scripts/remove-background.ts",

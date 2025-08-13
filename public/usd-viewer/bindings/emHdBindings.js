@@ -14,7 +14,7 @@ var getUsdModule = ((args) => {
       },
       ...args,
       urlModifier: args?.urlModifier,
-    },
+    }
   ) {
     function GROWABLE_HEAP_I8() {
       if (wasmMemory.buffer != HEAP8.buffer) {
@@ -77,12 +77,13 @@ var getUsdModule = ((args) => {
     Module["urlCallbackFromWorker"] = (...args) => {
       const verbose = false;
       const uniqueMessageId = Math.random().toString(36);
-      
+
       let file = args[0];
       if (typeof file === "string") file = file.split("/").pop();
       file = "\x1B[1;92m" + file + "\x1B[0m";
-      
-      if (verbose) console.log(file, "urlCallbackFromWorker", args, uniqueMessageId);
+
+      if (verbose)
+        console.log(file, "urlCallbackFromWorker", args, uniqueMessageId);
       let success = false;
 
       const abort = new Promise((resolve) => {
@@ -91,10 +92,16 @@ var getUsdModule = ((args) => {
             resolve(undefined);
             return;
           }
-          if (verbose) console.warn(file, "urlCallbackFromWorker timed out", args, uniqueMessageId);
+          if (verbose)
+            console.warn(
+              file,
+              "urlCallbackFromWorker timed out",
+              args,
+              uniqueMessageId
+            );
           resolve(undefined);
         }, 10);
-      })
+      });
 
       const promise = new Promise((resolve) => {
         let handler;
@@ -107,9 +114,13 @@ var getUsdModule = ((args) => {
           ) {
             self.removeEventListener("message", handler);
             resolve(e.data.result);
-          }
-          else {
-            if (verbose) console.log(file, "worker handler received message but its not ours", e.data);
+          } else {
+            if (verbose)
+              console.log(
+                file,
+                "worker handler received message but its not ours",
+                e.data
+              );
           }
         };
         self.addEventListener("message", handler);
@@ -118,10 +129,18 @@ var getUsdModule = ((args) => {
       postMessage({
         cmd: "callHandlerAsync",
         handler: "urlModifier",
-        args: {...args, uniqueMessageId },
+        args: { ...args, uniqueMessageId },
       });
 
-      if (verbose) console.log(file, "worker is done sending message, awaiting response", args, uniqueMessageId, Module["_pthread_self"](), PThread.pthreads);
+      if (verbose)
+        console.log(
+          file,
+          "worker is done sending message, awaiting response",
+          args,
+          uniqueMessageId,
+          Module["_pthread_self"](),
+          PThread.pthreads
+        );
 
       return Promise.race([promise, abort]);
     };
@@ -135,8 +154,8 @@ var getUsdModule = ((args) => {
               .toString()
               .substring(
                 0,
-                window.location.pathname.toString().lastIndexOf("/"),
-              ) + "/",
+                window.location.pathname.toString().lastIndexOf("/")
+              ) + "/"
           );
         } else if (
           typeof process === "undefined" &&
@@ -145,8 +164,7 @@ var getUsdModule = ((args) => {
           PACKAGE_PATH = encodeURIComponent(
             location.pathname
               .toString()
-              .substring(0, location.pathname.toString().lastIndexOf("/")) +
-              "/",
+              .substring(0, location.pathname.toString().lastIndexOf("/")) + "/"
           );
         }
         var PACKAGE_NAME = "emHdBindings.data";
@@ -157,7 +175,7 @@ var getUsdModule = ((args) => {
         ) {
           Module["locateFile"] = Module["locateFilePackage"];
           err(
-            "warning: you defined Module.locateFilePackage, that has been renamed to Module.locateFile (using your locateFilePackage for now)",
+            "warning: you defined Module.locateFilePackage, that has been renamed to Module.locateFile (using your locateFilePackage for now)"
           );
         }
         var REMOTE_PACKAGE_NAME = Module["locateFile"]
@@ -168,7 +186,7 @@ var getUsdModule = ((args) => {
           packageName,
           packageSize,
           callback,
-          errback,
+          errback
         ) {
           if (
             typeof process === "object" &&
@@ -212,7 +230,7 @@ var getUsdModule = ((args) => {
                 num++;
               }
               total = Math.ceil(
-                (total * Module.expectedDataFileDownloads) / num,
+                (total * Module.expectedDataFileDownloads) / num
               );
               if (Module["setStatus"])
                 Module["setStatus"](`Downloading data... (${loaded}/${total})`);
@@ -246,7 +264,7 @@ var getUsdModule = ((args) => {
         var fetched = Module["getPreloadedPackage"]
           ? Module["getPreloadedPackage"](
               REMOTE_PACKAGE_NAME,
-              REMOTE_PACKAGE_SIZE,
+              REMOTE_PACKAGE_SIZE
             )
           : null;
         if (!fetched)
@@ -261,7 +279,7 @@ var getUsdModule = ((args) => {
                 fetched = data;
               }
             },
-            handleError,
+            handleError
           );
         function runWithFS() {
           function assert(check, msg) {
@@ -276,7 +294,7 @@ var getUsdModule = ((args) => {
             "/usd/hd/resources",
             "codegenTemplates",
             true,
-            true,
+            true
           );
           Module["FS_createPath"]("/usd", "httpResolver", true, true);
           Module["FS_createPath"]("/usd/httpResolver", "resources", true, true);
@@ -290,7 +308,7 @@ var getUsdModule = ((args) => {
             "/usd/usd/resources",
             "codegenTemplates",
             true,
-            true,
+            true
           );
           Module["FS_createPath"]("/usd/usd/resources", "usd", true, true);
           Module["FS_createPath"]("/usd", "usdGeom", true, true);
@@ -299,7 +317,7 @@ var getUsdModule = ((args) => {
             "/usd/usdGeom/resources",
             "usdGeom",
             true,
-            true,
+            true
           );
           Module["FS_createPath"]("/usd", "usdHydra", true, true);
           Module["FS_createPath"]("/usd/usdHydra", "resources", true, true);
@@ -307,13 +325,13 @@ var getUsdModule = ((args) => {
             "/usd/usdHydra/resources",
             "shaders",
             true,
-            true,
+            true
           );
           Module["FS_createPath"](
             "/usd/usdHydra/resources",
             "usdHydra",
             true,
-            true,
+            true
           );
           Module["FS_createPath"]("/usd", "usdImaging", true, true);
           Module["FS_createPath"]("/usd/usdImaging", "resources", true, true);
@@ -323,7 +341,7 @@ var getUsdModule = ((args) => {
             "/usd/usdLux/resources",
             "usdLux",
             true,
-            true,
+            true
           );
           Module["FS_createPath"]("/usd", "usdRender", true, true);
           Module["FS_createPath"]("/usd/usdRender", "resources", true, true);
@@ -331,7 +349,7 @@ var getUsdModule = ((args) => {
             "/usd/usdRender/resources",
             "usdRender",
             true,
-            true,
+            true
           );
           Module["FS_createPath"]("/usd", "usdShade", true, true);
           Module["FS_createPath"]("/usd/usdShade", "resources", true, true);
@@ -339,7 +357,7 @@ var getUsdModule = ((args) => {
             "/usd/usdShade/resources",
             "usdShade",
             true,
-            true,
+            true
           );
           Module["FS_createPath"]("/usd", "usdShaders", true, true);
           Module["FS_createPath"]("/usd/usdShaders", "resources", true, true);
@@ -347,7 +365,7 @@ var getUsdModule = ((args) => {
             "/usd/usdShaders/resources",
             "shaders",
             true,
-            true,
+            true
           );
           Module["FS_createPath"]("/usd", "usdSkel", true, true);
           Module["FS_createPath"]("/usd/usdSkel", "resources", true, true);
@@ -355,7 +373,7 @@ var getUsdModule = ((args) => {
             "/usd/usdSkel/resources",
             "usdSkel",
             true,
-            true,
+            true
           );
           Module["FS_createPath"]("/usd", "usdVol", true, true);
           Module["FS_createPath"]("/usd/usdVol", "resources", true, true);
@@ -363,7 +381,7 @@ var getUsdModule = ((args) => {
             "/usd/usdVol/resources",
             "usdVol",
             true,
-            true,
+            true
           );
           function DataRequest(start, end, audio) {
             this.start = start;
@@ -390,7 +408,7 @@ var getUsdModule = ((args) => {
                 byteArray,
                 true,
                 true,
-                true,
+                true
               );
               Module["removeRunDependency"](`fp ${that.name}`);
               this.requests[this.name] = null;
@@ -401,14 +419,14 @@ var getUsdModule = ((args) => {
             new DataRequest(
               files[i]["start"],
               files[i]["end"],
-              files[i]["audio"] || 0,
+              files[i]["audio"] || 0
             ).open("GET", files[i]["filename"]);
           }
           function processPackageData(arrayBuffer) {
             assert(arrayBuffer, "Loading data file failed.");
             assert(
               arrayBuffer.constructor.name === ArrayBuffer.name,
-              "bad input to processPackageData",
+              "bad input to processPackageData"
             );
             var byteArray = new Uint8Array(arrayBuffer);
             DataRequest.prototype.byteArray = byteArray;
@@ -681,7 +699,7 @@ var getUsdModule = ((args) => {
     if (!Module["ENVIRONMENT_IS_PTHREAD"]) {
       function isMobileDevice() {
         return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-          navigator.userAgent,
+          navigator.userAgent
         );
       }
       const MAX_MEMORY_MOBILE = 1024 * 1024 * 1024;
@@ -760,7 +778,7 @@ var getUsdModule = ((args) => {
         nodeWorkerThreads = require("worker_threads");
       } catch (e) {
         console.error(
-          'The "worker_threads" module is not supported in this node.js build - perhaps a newer version is needed?',
+          'The "worker_threads" module is not supported in this node.js build - perhaps a newer version is needed?'
         );
         throw e;
       }
@@ -777,7 +795,7 @@ var getUsdModule = ((args) => {
       if (scriptDirectory.indexOf("blob:") !== 0) {
         scriptDirectory = scriptDirectory.substr(
           0,
-          scriptDirectory.replace(/[?#].*/, "").lastIndexOf("/") + 1,
+          scriptDirectory.replace(/[?#].*/, "").lastIndexOf("/") + 1
         );
       } else {
         scriptDirectory = "";
@@ -866,7 +884,7 @@ var getUsdModule = ((args) => {
         INITIAL_MEMORY +
         "! (STACK_SIZE=" +
         5242880 +
-        ")",
+        ")"
     );
     if (ENVIRONMENT_IS_PTHREAD) {
       wasmMemory = Module["wasmMemory"];
@@ -881,11 +899,11 @@ var getUsdModule = ((args) => {
         });
         if (!(wasmMemory.buffer instanceof SharedArrayBuffer)) {
           err(
-            "requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag",
+            "requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag"
           );
           if (ENVIRONMENT_IS_NODE) {
             err(
-              "(on node you may need: --experimental-wasm-threads --experimental-wasm-bulk-memory and/or recent version)",
+              "(on node you may need: --experimental-wasm-threads --experimental-wasm-bulk-memory and/or recent version)"
             );
           }
           throw Error("bad memory");
@@ -1011,7 +1029,7 @@ var getUsdModule = ((args) => {
             readAsync(
               binaryFile,
               (response) => resolve(new Uint8Array(response)),
-              reject,
+              reject
             );
           });
         }
@@ -1044,7 +1062,7 @@ var getUsdModule = ((args) => {
               err("falling back to ArrayBuffer instantiation");
               return instantiateArrayBuffer(binaryFile, imports, callback);
             });
-          },
+          }
         );
       }
       return instantiateArrayBuffer(binaryFile, imports, callback);
@@ -1078,7 +1096,7 @@ var getUsdModule = ((args) => {
         wasmBinary,
         wasmBinaryFile,
         info,
-        receiveInstantiationResult,
+        receiveInstantiationResult
       ).catch(readyPromiseReject);
       return {};
     }
@@ -1101,17 +1119,22 @@ var getUsdModule = ((args) => {
 
         if (ENVIRONMENT_IS_PTHREAD) {
           if (verbose)
-            console.log(file, "we're in a thread, calling urlCallback", absoluteUrl);
+            console.log(
+              file,
+              "we're in a thread, calling urlCallback",
+              absoluteUrl
+            );
           let result;
           try {
             // TODO: this freezes the worker sometimes, some issue with back-and-forth messaging
             result = await Module["urlCallbackFromWorker"](absoluteUrl);
           } catch (e) {
             console.error(
-              file, "Error in thread callback for",
+              file,
+              "Error in thread callback for",
               absoluteUrl,
               "error:",
-              e,
+              e
             );
           }
           if (verbose) console.log(file, "got result inside worker", result);
@@ -1131,7 +1154,7 @@ var getUsdModule = ((args) => {
               "was",
               prev,
               "modifier now",
-              Module["urlModifier"],
+              Module["urlModifier"]
             );
         } else {
           // if (verbose) console.log(file, "no URL modifier found", Module["urlModifier"]);
@@ -1169,7 +1192,7 @@ var getUsdModule = ((args) => {
             "Error after main thread callback in fetch_asset for",
             absoluteUrl,
             "error:",
-            e,
+            e
           );
           Module.HEAP32[dataPtr >> 2] = 0;
           Module.HEAP32[(dataPtr >> 2) + 1] = 0;
@@ -1186,7 +1209,11 @@ var getUsdModule = ((args) => {
               .catch((e) => null);
           }
           if (!buffer || buffer.byteLength === 0) {
-            console.error(file, "Error fetching asset – couldn't fetch", absoluteUrl);
+            console.error(
+              file,
+              "Error fetching asset – couldn't fetch",
+              absoluteUrl
+            );
             buffer = new ArrayBuffer(1);
           }
           // if (verbose) console.log(file, "after awaiting buffer", buffer);
@@ -1199,7 +1226,7 @@ var getUsdModule = ((args) => {
               absoluteUrl,
               " ->",
               length,
-              "bytes",
+              "bytes"
             );
           GROWABLE_HEAP_U8().set(new Uint8Array(buffer), ptr >>> 0);
           Module.HEAP32[dataPtr >> 2] = ptr;
@@ -1229,7 +1256,7 @@ var getUsdModule = ((args) => {
       let element = document.createElement("a");
       element.setAttribute(
         "href",
-        "data:text/plain;charset=utf-8," + encodeURIComponent(text),
+        "data:text/plain;charset=utf-8," + encodeURIComponent(text)
       );
       element.setAttribute("download", filename);
       element.style.display = "none";
@@ -1322,7 +1349,7 @@ var getUsdModule = ((args) => {
           trailingSlash = path.substr(-1) === "/";
         path = PATH.normalizeArray(
           path.split("/").filter((p) => !!p),
-          !isAbsolute,
+          !isAbsolute
         ).join("/");
         if (!path && !isAbsolute) {
           path = ".";
@@ -1397,7 +1424,7 @@ var getUsdModule = ((args) => {
         }
         resolvedPath = PATH.normalizeArray(
           resolvedPath.split("/").filter((p) => !!p),
-          !resolvedAbsolute,
+          !resolvedAbsolute
         ).join("/");
         return (resolvedAbsolute ? "/" : "") + resolvedPath || ".";
       },
@@ -1534,7 +1561,7 @@ var getUsdModule = ((args) => {
         stringy,
         u8array,
         0,
-        u8array.length,
+        u8array.length
       );
       if (dontAddNull) u8array.length = numBytesWritten;
       return u8array;
@@ -1799,7 +1826,7 @@ var getUsdModule = ((args) => {
           newCapacity,
           (prevCapacity *
             (prevCapacity < CAPACITY_DOUBLING_MAX ? 2 : 1.125)) >>>
-            0,
+            0
         );
         if (prevCapacity != 0) newCapacity = Math.max(newCapacity, 256);
         var oldContents = node.contents;
@@ -1817,7 +1844,7 @@ var getUsdModule = ((args) => {
           node.contents = new Uint8Array(newSize);
           if (oldContents) {
             node.contents.set(
-              oldContents.subarray(0, Math.min(newSize, node.usedBytes)),
+              oldContents.subarray(0, Math.min(newSize, node.usedBytes))
             );
           }
           node.usedBytes = newSize;
@@ -1951,7 +1978,7 @@ var getUsdModule = ((args) => {
             } else if (position + length <= node.usedBytes) {
               node.contents.set(
                 buffer.subarray(offset, offset + length),
-                position,
+                position
               );
               return length;
             }
@@ -1960,7 +1987,7 @@ var getUsdModule = ((args) => {
           if (node.contents.subarray && buffer.subarray) {
             node.contents.set(
               buffer.subarray(offset, offset + length),
-              position,
+              position
             );
           } else {
             for (var i = 0; i < length; i++) {
@@ -1988,7 +2015,7 @@ var getUsdModule = ((args) => {
           MEMFS.expandFileStorage(stream.node, offset + length);
           stream.node.usedBytes = Math.max(
             stream.node.usedBytes,
-            offset + length,
+            offset + length
           );
         },
         mmap(stream, length, position, prot, flags) {
@@ -2009,7 +2036,7 @@ var getUsdModule = ((args) => {
                 contents = Array.prototype.slice.call(
                   contents,
                   position,
-                  position + length,
+                  position + length
                 );
               }
             }
@@ -2035,7 +2062,7 @@ var getUsdModule = ((args) => {
         (arrayBuffer) => {
           assert(
             arrayBuffer,
-            `Loading data file "${url}" failed (no arrayBuffer).`,
+            `Loading data file "${url}" failed (no arrayBuffer).`
           );
           onload(new Uint8Array(arrayBuffer));
           if (dep) removeRunDependency(dep);
@@ -2046,7 +2073,7 @@ var getUsdModule = ((args) => {
           } else {
             throw `Loading data file "${url}" failed.`;
           }
-        },
+        }
       );
       if (dep) addRunDependency(dep);
     };
@@ -2056,7 +2083,7 @@ var getUsdModule = ((args) => {
       fileData,
       canRead,
       canWrite,
-      canOwn,
+      canOwn
     ) => FS.createDataFile(parent, name, fileData, canRead, canWrite, canOwn);
     var preloadPlugins = Module["preloadPlugins"] || [];
     var FS_handledByPreloadPlugin = (byteArray, fullname, finish, onerror) => {
@@ -2081,7 +2108,7 @@ var getUsdModule = ((args) => {
       onerror,
       dontCreateFile,
       canOwn,
-      preFinish,
+      preFinish
     ) => {
       var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;
       var dep = getUniqueRunDependency(`cp ${fullname}`);
@@ -2095,7 +2122,7 @@ var getUsdModule = ((args) => {
               byteArray,
               canRead,
               canWrite,
-              canOwn,
+              canOwn
             );
           }
           if (onload) onload();
@@ -2467,7 +2494,7 @@ var getUsdModule = ((args) => {
         FS.syncFSRequests++;
         if (FS.syncFSRequests > 1) {
           err(
-            `warning: ${FS.syncFSRequests} FS.syncfs operations in flight at once, probably just doing extra work`,
+            `warning: ${FS.syncFSRequests} FS.syncfs operations in flight at once, probably just doing extra work`
           );
         }
         var mounts = FS.getMounts(FS.root.mount);
@@ -2747,7 +2774,7 @@ var getUsdModule = ((args) => {
         }
         return PATH_FS.resolve(
           FS.getPath(link.parent),
-          link.node_ops.readlink(link),
+          link.node_ops.readlink(link)
         );
       },
       stat(path, dontFollow) {
@@ -2977,7 +3004,7 @@ var getUsdModule = ((args) => {
           buffer,
           offset,
           length,
-          position,
+          position
         );
         if (!seeking) stream.position += bytesRead;
         return bytesRead;
@@ -3013,7 +3040,7 @@ var getUsdModule = ((args) => {
           offset,
           length,
           position,
-          canOwn,
+          canOwn
         );
         if (!seeking) stream.position += bytesWritten;
         return bytesWritten;
@@ -3061,7 +3088,7 @@ var getUsdModule = ((args) => {
           buffer,
           offset,
           length,
-          mmapFlags,
+          mmapFlags
         );
       },
       munmap: (stream) => 0,
@@ -3174,7 +3201,7 @@ var getUsdModule = ((args) => {
             },
           },
           {},
-          "/proc/self/fd",
+          "/proc/self/fd"
         );
       },
       createStandardStreams() {
@@ -3299,7 +3326,7 @@ var getUsdModule = ((args) => {
       createFile(parent, name, properties, canRead, canWrite) {
         var path = PATH.join2(
           typeof parent == "string" ? parent : FS.getPath(parent),
-          name,
+          name
         );
         var mode = FS_getMode(canRead, canWrite);
         return FS.create(path, mode);
@@ -3330,7 +3357,7 @@ var getUsdModule = ((args) => {
       createDevice(parent, name, input, output) {
         var path = PATH.join2(
           typeof parent == "string" ? parent : FS.getPath(parent),
-          name,
+          name
         );
         var mode = FS_getMode(!!input, !!output);
         if (!FS.createDevice.major) FS.createDevice.major = 64;
@@ -3386,7 +3413,7 @@ var getUsdModule = ((args) => {
           return true;
         if (typeof XMLHttpRequest != "undefined") {
           throw new Error(
-            "Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.",
+            "Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread."
           );
         } else if (read_) {
           try {
@@ -3425,7 +3452,7 @@ var getUsdModule = ((args) => {
               !((xhr.status >= 200 && xhr.status < 300) || xhr.status === 304)
             )
               throw new Error(
-                "Couldn't load " + url + ". Status: " + xhr.status,
+                "Couldn't load " + url + ". Status: " + xhr.status
               );
             var datalength = Number(xhr.getResponseHeader("Content-length"));
             var header;
@@ -3444,11 +3471,11 @@ var getUsdModule = ((args) => {
                     from +
                     ", " +
                     to +
-                    ") or no bytes requested!",
+                    ") or no bytes requested!"
                 );
               if (to > datalength - 1)
                 throw new Error(
-                  "only " + datalength + " bytes available! programmer error!",
+                  "only " + datalength + " bytes available! programmer error!"
                 );
               var xhr = new XMLHttpRequest();
               xhr.open("GET", url, false);
@@ -3463,7 +3490,7 @@ var getUsdModule = ((args) => {
                 !((xhr.status >= 200 && xhr.status < 300) || xhr.status === 304)
               )
                 throw new Error(
-                  "Couldn't load " + url + ". Status: " + xhr.status,
+                  "Couldn't load " + url + ". Status: " + xhr.status
                 );
               if (xhr.response !== undefined) {
                 return new Uint8Array(xhr.response || []);
@@ -3487,7 +3514,7 @@ var getUsdModule = ((args) => {
               datalength = this.getter(0).length;
               chunkSize = datalength;
               out(
-                "LazyFiles on gzip forces download of the whole file when length is accessed",
+                "LazyFiles on gzip forces download of the whole file when length is accessed"
               );
             }
             this._length = datalength;
@@ -3628,7 +3655,7 @@ var getUsdModule = ((args) => {
             ? tempDouble > 0
               ? +Math.floor(tempDouble / 4294967296) >>> 0
               : ~~+Math.ceil(
-                  (tempDouble - +(~~tempDouble >>> 0)) / 4294967296,
+                  (tempDouble - +(~~tempDouble >>> 0)) / 4294967296
                 ) >>> 0
             : 0),
         ]),
@@ -3646,7 +3673,7 @@ var getUsdModule = ((args) => {
             ? tempDouble > 0
               ? +Math.floor(tempDouble / 4294967296) >>> 0
               : ~~+Math.ceil(
-                  (tempDouble - +(~~tempDouble >>> 0)) / 4294967296,
+                  (tempDouble - +(~~tempDouble >>> 0)) / 4294967296
                 ) >>> 0
             : 0),
         ]),
@@ -3660,7 +3687,7 @@ var getUsdModule = ((args) => {
             ? tempDouble > 0
               ? +Math.floor(tempDouble / 4294967296) >>> 0
               : ~~+Math.ceil(
-                  (tempDouble - +(~~tempDouble >>> 0)) / 4294967296,
+                  (tempDouble - +(~~tempDouble >>> 0)) / 4294967296
                 ) >>> 0
             : 0),
         ]),
@@ -3674,7 +3701,7 @@ var getUsdModule = ((args) => {
             ? tempDouble > 0
               ? +Math.floor(tempDouble / 4294967296) >>> 0
               : ~~+Math.ceil(
-                  (tempDouble - +(~~tempDouble >>> 0)) / 4294967296,
+                  (tempDouble - +(~~tempDouble >>> 0)) / 4294967296
                 ) >>> 0
             : 0),
         ]),
@@ -3688,7 +3715,7 @@ var getUsdModule = ((args) => {
             ? tempDouble > 0
               ? +Math.floor(tempDouble / 4294967296) >>> 0
               : ~~+Math.ceil(
-                  (tempDouble - +(~~tempDouble >>> 0)) / 4294967296,
+                  (tempDouble - +(~~tempDouble >>> 0)) / 4294967296
                 ) >>> 0
             : 0),
         ]),
@@ -3772,7 +3799,7 @@ var getUsdModule = ((args) => {
         addOnPreRun(() => {
           addRunDependency("loading-workers");
           PThread.loadWasmModuleToAllWorkers(() =>
-            removeRunDependency("loading-workers"),
+            removeRunDependency("loading-workers")
           );
         });
       },
@@ -3800,7 +3827,7 @@ var getUsdModule = ((args) => {
         PThread.unusedWorkers.push(worker);
         PThread.runningWorkers.splice(
           PThread.runningWorkers.indexOf(worker),
-          1,
+          1
         );
         worker.pthread_ptr = 0;
         __emscripten_thread_free_data(pthread_ptr);
@@ -3819,7 +3846,7 @@ var getUsdModule = ((args) => {
                 file = file.split("/").pop();
                 file = "\x1B[1;93m" + file + "\x1B[0m";
                 console.log(file, "worker.onmessage", e.data);
-              } 
+              }
             }
             var d = e["data"];
             var cmd = d["cmd"];
@@ -3829,7 +3856,7 @@ var getUsdModule = ((args) => {
                 targetWorker.postMessage(d, d["transferList"]);
               } else {
                 err(
-                  `Internal error! Worker sent a message "${cmd}" to target pthread ${d["targetThread"]}, but that thread no longer exists!`,
+                  `Internal error! Worker sent a message "${cmd}" to target pthread ${d["targetThread"]}, but that thread no longer exists!`
                 );
               }
               return;
@@ -3870,17 +3897,22 @@ var getUsdModule = ((args) => {
                 ...args,
                 cmd: "callHandlerAsyncResult",
                 handler: d["handler"],
-                id: d["id"]
-              }
+                id: d["id"],
+              };
               if (result instanceof Promise) {
                 result.then((r) => {
                   payload.result = r;
-                  if (verbose) console.log("callHandlerAsync result send back", payload);
+                  if (verbose)
+                    console.log("callHandlerAsync result send back", payload);
                   worker.postMessage(payload);
                 });
               } else {
                 payload.result = result;
-                if (verbose) console.log("callHandlerAsync result send back immediate", payload);
+                if (verbose)
+                  console.log(
+                    "callHandlerAsync result send back immediate",
+                    payload
+                  );
                 worker.postMessage(payload);
               }
             } else if (cmd) {
@@ -3916,7 +3948,7 @@ var getUsdModule = ((args) => {
           return onMaybeReady();
         }
         let pthreadPoolReady = Promise.all(
-          PThread.unusedWorkers.map(PThread.loadWasmModuleToWorker),
+          PThread.unusedWorkers.map(PThread.loadWasmModuleToWorker)
         );
         pthreadPoolReady.then(onMaybeReady);
       },
@@ -4141,7 +4173,7 @@ var getUsdModule = ((args) => {
         1,
         !ENVIRONMENT_IS_WEB,
         2097152,
-        false,
+        false
       );
       PThread.threadInitTLS();
     }
@@ -4162,7 +4194,7 @@ var getUsdModule = ((args) => {
       arg >>>= 0;
       if (typeof SharedArrayBuffer == "undefined") {
         err(
-          "Current environment does not support SharedArrayBuffer, pthreads are not available!",
+          "Current environment does not support SharedArrayBuffer, pthreads are not available!"
         );
         return 6;
       }
@@ -4358,10 +4390,10 @@ var getUsdModule = ((args) => {
             type = FS.isChrdev(child.mode)
               ? 2
               : FS.isDir(child.mode)
-                ? 4
-                : FS.isLink(child.mode)
-                  ? 10
-                  : 8;
+              ? 4
+              : FS.isLink(child.mode)
+              ? 10
+              : 8;
           }
           (tempI64 = [
             id >>> 0,
@@ -4370,7 +4402,7 @@ var getUsdModule = ((args) => {
               ? tempDouble > 0
                 ? +Math.floor(tempDouble / 4294967296) >>> 0
                 : ~~+Math.ceil(
-                    (tempDouble - +(~~tempDouble >>> 0)) / 4294967296,
+                    (tempDouble - +(~~tempDouble >>> 0)) / 4294967296
                   ) >>> 0
               : 0),
           ]),
@@ -4383,7 +4415,7 @@ var getUsdModule = ((args) => {
               ? tempDouble > 0
                 ? +Math.floor(tempDouble / 4294967296) >>> 0
                 : ~~+Math.ceil(
-                    (tempDouble - +(~~tempDouble >>> 0)) / 4294967296,
+                    (tempDouble - +(~~tempDouble >>> 0)) / 4294967296
                   ) >>> 0
               : 0),
           ]),
@@ -4641,7 +4673,7 @@ var getUsdModule = ((args) => {
       name,
       size,
       minRange,
-      maxRange,
+      maxRange
     ) {
       primitiveType >>>= 0;
       name >>>= 0;
@@ -4677,7 +4709,7 @@ var getUsdModule = ((args) => {
     var whenDependentTypesAreResolved = (
       myTypes,
       dependentTypes,
-      getTypeConverters,
+      getTypeConverters
     ) => {
       myTypes.forEach(function (type) {
         typeDependencies[type] = dependentTypes;
@@ -4719,7 +4751,7 @@ var getUsdModule = ((args) => {
       var name = registeredInstance.name;
       if (!rawType) {
         throwBindingError(
-          `type "${name}" must have a positive integer typeid pointer`,
+          `type "${name}" must have a positive integer typeid pointer`
         );
       }
       if (registeredTypes.hasOwnProperty(rawType)) {
@@ -4740,7 +4772,7 @@ var getUsdModule = ((args) => {
     function registerType(rawType, registeredInstance, options = {}) {
       if (!("argPackAdvance" in registeredInstance)) {
         throw new TypeError(
-          "registerType registeredInstance requires argPackAdvance",
+          "registerType registeredInstance requires argPackAdvance"
         );
       }
       return sharedRegisterType(rawType, registeredInstance, options);
@@ -4868,7 +4900,7 @@ var getUsdModule = ((args) => {
       }
       record.count = { value: 1 };
       return attachFinalizer(
-        Object.create(prototype, { $$: { value: record } }),
+        Object.create(prototype, { $$: { value: record } })
       );
     };
     function RegisteredPointer_fromWireType(ptr) {
@@ -4879,7 +4911,7 @@ var getUsdModule = ((args) => {
       }
       var registeredInstance = getInheritedInstance(
         this.registeredClass,
-        rawPointer,
+        rawPointer
       );
       if (undefined !== registeredInstance) {
         if (0 === registeredInstance.$$.count.value) {
@@ -4921,7 +4953,7 @@ var getUsdModule = ((args) => {
       var dp = downcastPointer(
         rawPointer,
         this.registeredClass,
-        toType.registeredClass,
+        toType.registeredClass
       );
       if (dp === null) {
         return makeDefaultHandle.call(this);
@@ -4995,7 +5027,7 @@ var getUsdModule = ((args) => {
             var clone = attachFinalizer(
               Object.create(Object.getPrototypeOf(this), {
                 $$: { value: shallowCopyInternalPointer(this.$$) },
-              }),
+              })
             );
             clone.$$.count.value += 1;
             clone.$$.deleteScheduled = false;
@@ -5065,12 +5097,12 @@ var getUsdModule = ((args) => {
             !proto[methodName].overloadTable.hasOwnProperty(arguments.length)
           ) {
             throwBindingError(
-              `Function '${humanName}' called with an invalid number of arguments (${arguments.length}) - expects one of (${proto[methodName].overloadTable})!`,
+              `Function '${humanName}' called with an invalid number of arguments (${arguments.length}) - expects one of (${proto[methodName].overloadTable})!`
             );
           }
           return proto[methodName].overloadTable[arguments.length].apply(
             this,
-            arguments,
+            arguments
           );
         };
         proto[methodName].overloadTable = [];
@@ -5089,7 +5121,7 @@ var getUsdModule = ((args) => {
         ensureOverloadTable(Module, name, name);
         if (Module.hasOwnProperty(numArguments)) {
           throwBindingError(
-            `Cannot register multiple overloads of a function with the same number of arguments (${numArguments})!`,
+            `Cannot register multiple overloads of a function with the same number of arguments (${numArguments})!`
           );
         }
         Module[name].overloadTable[numArguments] = value;
@@ -5108,7 +5140,7 @@ var getUsdModule = ((args) => {
       baseClass,
       getActualType,
       upcast,
-      downcast,
+      downcast
     ) {
       this.name = name;
       this.constructor = constructor;
@@ -5124,7 +5156,7 @@ var getUsdModule = ((args) => {
       while (ptrClass !== desiredClass) {
         if (!ptrClass.upcast) {
           throwBindingError(
-            `Expected null or instance of ${desiredClass.name}, got an instance of ${ptrClass.name}`,
+            `Expected null or instance of ${desiredClass.name}, got an instance of ${ptrClass.name}`
           );
         }
         ptr = ptrClass.upcast(ptr);
@@ -5141,12 +5173,12 @@ var getUsdModule = ((args) => {
       }
       if (!handle.$$) {
         throwBindingError(
-          `Cannot pass "${embindRepr(handle)}" as a ${this.name}`,
+          `Cannot pass "${embindRepr(handle)}" as a ${this.name}`
         );
       }
       if (!handle.$$.ptr) {
         throwBindingError(
-          `Cannot pass deleted object as a pointer of type ${this.name}`,
+          `Cannot pass deleted object as a pointer of type ${this.name}`
         );
       }
       var handleClass = handle.$$.ptrType.registeredClass;
@@ -5171,17 +5203,21 @@ var getUsdModule = ((args) => {
       }
       if (!handle.$$) {
         throwBindingError(
-          `Cannot pass "${embindRepr(handle)}" as a ${this.name}`,
+          `Cannot pass "${embindRepr(handle)}" as a ${this.name}`
         );
       }
       if (!handle.$$.ptr) {
         throwBindingError(
-          `Cannot pass deleted object as a pointer of type ${this.name}`,
+          `Cannot pass deleted object as a pointer of type ${this.name}`
         );
       }
       if (!this.isConst && handle.$$.ptrType.isConst) {
         throwBindingError(
-          `Cannot convert argument of type ${handle.$$.smartPtrType ? handle.$$.smartPtrType.name : handle.$$.ptrType.name} to parameter type ${this.name}`,
+          `Cannot convert argument of type ${
+            handle.$$.smartPtrType
+              ? handle.$$.smartPtrType.name
+              : handle.$$.ptrType.name
+          } to parameter type ${this.name}`
         );
       }
       var handleClass = handle.$$.ptrType.registeredClass;
@@ -5196,7 +5232,11 @@ var getUsdModule = ((args) => {
               ptr = handle.$$.smartPtr;
             } else {
               throwBindingError(
-                `Cannot convert argument of type ${handle.$$.smartPtrType ? handle.$$.smartPtrType.name : handle.$$.ptrType.name} to parameter type ${this.name}`,
+                `Cannot convert argument of type ${
+                  handle.$$.smartPtrType
+                    ? handle.$$.smartPtrType.name
+                    : handle.$$.ptrType.name
+                } to parameter type ${this.name}`
               );
             }
             break;
@@ -5210,7 +5250,7 @@ var getUsdModule = ((args) => {
               var clonedHandle = handle["clone"]();
               ptr = this.rawShare(
                 ptr,
-                Emval.toHandle(() => clonedHandle["delete"]()),
+                Emval.toHandle(() => clonedHandle["delete"]())
               );
               if (destructors !== null) {
                 destructors.push(this.rawDestructor, ptr);
@@ -5232,17 +5272,17 @@ var getUsdModule = ((args) => {
       }
       if (!handle.$$) {
         throwBindingError(
-          `Cannot pass "${embindRepr(handle)}" as a ${this.name}`,
+          `Cannot pass "${embindRepr(handle)}" as a ${this.name}`
         );
       }
       if (!handle.$$.ptr) {
         throwBindingError(
-          `Cannot pass deleted object as a pointer of type ${this.name}`,
+          `Cannot pass deleted object as a pointer of type ${this.name}`
         );
       }
       if (handle.$$.ptrType.isConst) {
         throwBindingError(
-          `Cannot convert argument of type ${handle.$$.ptrType.name} to parameter type ${this.name}`,
+          `Cannot convert argument of type ${handle.$$.ptrType.name} to parameter type ${this.name}`
         );
       }
       var handleClass = handle.$$.ptrType.registeredClass;
@@ -5286,7 +5326,7 @@ var getUsdModule = ((args) => {
       rawGetPointee,
       rawConstructor,
       rawShare,
-      rawDestructor,
+      rawDestructor
     ) {
       this.name = name;
       this.registeredClass = registeredClass;
@@ -5352,7 +5392,7 @@ var getUsdModule = ((args) => {
       var fp = makeDynCaller();
       if (typeof fp != "function") {
         throwBindingError(
-          `unknown function pointer with signature ${signature}: ${rawFunction}`,
+          `unknown function pointer with signature ${signature}: ${rawFunction}`
         );
       }
       return fp;
@@ -5404,7 +5444,7 @@ var getUsdModule = ((args) => {
       }
       types.forEach(visit);
       throw new UnboundTypeError(
-        `${message}: ` + unboundTypes.map(getTypeName).join([", "]),
+        `${message}: ` + unboundTypes.map(getTypeName).join([", "])
       );
     };
     function __embind_register_class(
@@ -5420,7 +5460,7 @@ var getUsdModule = ((args) => {
       downcast,
       name,
       destructorSignature,
-      rawDestructor,
+      rawDestructor
     ) {
       rawType >>>= 0;
       rawPointerType >>>= 0;
@@ -5438,7 +5478,7 @@ var getUsdModule = ((args) => {
       name = readLatin1String(name);
       getActualType = embind__requireFunction(
         getActualTypeSignature,
-        getActualType,
+        getActualType
       );
       if (upcast) {
         upcast = embind__requireFunction(upcastSignature, upcast);
@@ -5448,7 +5488,7 @@ var getUsdModule = ((args) => {
       }
       rawDestructor = embind__requireFunction(
         destructorSignature,
-        rawDestructor,
+        rawDestructor
       );
       var legalFunctionName = makeLegalFunctionName(name);
       exposePublicSymbol(legalFunctionName, function () {
@@ -5479,7 +5519,11 @@ var getUsdModule = ((args) => {
             var body = registeredClass.constructor_body[arguments.length];
             if (undefined === body) {
               throw new BindingError(
-                `Tried to invoke ctor of ${name} with invalid number of parameters (${arguments.length}) - expected (${Object.keys(registeredClass.constructor_body).toString()}) parameters instead!`,
+                `Tried to invoke ctor of ${name} with invalid number of parameters (${
+                  arguments.length
+                }) - expected (${Object.keys(
+                  registeredClass.constructor_body
+                ).toString()}) parameters instead!`
               );
             }
             return body.apply(this, arguments);
@@ -5496,7 +5540,7 @@ var getUsdModule = ((args) => {
             baseClass,
             getActualType,
             upcast,
-            downcast,
+            downcast
           );
           if (registeredClass.baseClass) {
             if (registeredClass.baseClass.__derivedClasses === undefined) {
@@ -5509,21 +5553,21 @@ var getUsdModule = ((args) => {
             registeredClass,
             true,
             false,
-            false,
+            false
           );
           var pointerConverter = new RegisteredPointer(
             name + "*",
             registeredClass,
             false,
             false,
-            false,
+            false
           );
           var constPointerConverter = new RegisteredPointer(
             name + " const*",
             registeredClass,
             false,
             true,
-            false,
+            false
           );
           registeredPointers[rawType] = {
             pointerType: pointerConverter,
@@ -5531,7 +5575,7 @@ var getUsdModule = ((args) => {
           };
           replacePublicSymbol(legalFunctionName, constructor);
           return [referenceConverter, pointerConverter, constPointerConverter];
-        },
+        }
       );
     }
     var runDestructors = (destructors) => {
@@ -5544,12 +5588,12 @@ var getUsdModule = ((args) => {
     function newFunc(constructor, argumentList) {
       if (!(constructor instanceof Function)) {
         throw new TypeError(
-          `new_ called with constructor type ${typeof constructor} which is not a function`,
+          `new_ called with constructor type ${typeof constructor} which is not a function`
         );
       }
       var dummy = createNamedFunction(
         constructor.name || "unknownFunctionName",
-        function () {},
+        function () {}
       );
       dummy.prototype = constructor.prototype;
       var obj = new dummy();
@@ -5765,12 +5809,12 @@ var getUsdModule = ((args) => {
       classType,
       cppInvokerFunc,
       cppTargetFunc,
-      isAsync,
+      isAsync
     ) {
       var argCount = argTypes.length;
       if (argCount < 2) {
         throwBindingError(
-          "argTypes array size mismatch! Must at least get return value and 'this' types!",
+          "argTypes array size mismatch! Must at least get return value and 'this' types!"
         );
       }
       var isClassMethodFunc = argTypes[1] !== null && classType !== null;
@@ -5791,7 +5835,13 @@ var getUsdModule = ((args) => {
         argsList += (i !== 0 ? ", " : "") + "arg" + i;
         argsListWired += (i !== 0 ? ", " : "") + "arg" + i + "Wired";
       }
-      var invokerFnBody = `\n        return function ${makeLegalFunctionName(humanName)}(${argsList}) {\n        if (arguments.length !== ${argCount - 2}) {\n          throwBindingError('function ${humanName} called with ' + arguments.length + ' arguments, expected ${argCount - 2}');\n        }`;
+      var invokerFnBody = `\n        return function ${makeLegalFunctionName(
+        humanName
+      )}(${argsList}) {\n        if (arguments.length !== ${
+        argCount - 2
+      }) {\n          throwBindingError('function ${humanName} called with ' + arguments.length + ' arguments, expected ${
+        argCount - 2
+      }');\n        }`;
       if (needsDestructorStack) {
         invokerFnBody += "var destructors = [];\n";
       }
@@ -5890,7 +5940,7 @@ var getUsdModule = ((args) => {
       if (argsIndex !== -1) {
         assert(
           signature[signature.length - 1] == ")",
-          "Parentheses for argument names should match.",
+          "Parentheses for argument names should match."
         );
         return signature.substr(0, argsIndex);
       } else {
@@ -5905,7 +5955,7 @@ var getUsdModule = ((args) => {
       invokerSignature,
       rawInvoker,
       fn,
-      isAsync,
+      isAsync
     ) {
       rawClassType >>>= 0;
       methodName >>>= 0;
@@ -5923,7 +5973,7 @@ var getUsdModule = ((args) => {
         function unboundTypesHandler() {
           throwUnboundTypeError(
             `Cannot call ${humanName} due to unbound types`,
-            rawArgTypes,
+            rawArgTypes
           );
         }
         if (methodName.startsWith("@@")) {
@@ -5945,7 +5995,7 @@ var getUsdModule = ((args) => {
             null,
             rawInvoker,
             fn,
-            isAsync,
+            isAsync
           );
           if (undefined === proto[methodName].overloadTable) {
             func.argCount = argCount - 1;
@@ -5972,18 +6022,18 @@ var getUsdModule = ((args) => {
       }
       if (!(this_ instanceof classType.registeredClass.constructor)) {
         throwBindingError(
-          `${humanName} incompatible with "this" of type ${this_.constructor.name}`,
+          `${humanName} incompatible with "this" of type ${this_.constructor.name}`
         );
       }
       if (!this_.$$.ptr) {
         throwBindingError(
-          `cannot call emscripten binding method ${humanName} on deleted object`,
+          `cannot call emscripten binding method ${humanName} on deleted object`
         );
       }
       return upcastPointer(
         this_.$$.ptr,
         this_.$$.ptrType.registeredClass,
-        classType.registeredClass,
+        classType.registeredClass
       );
     };
     function __embind_register_class_class_property(
@@ -5994,7 +6044,7 @@ var getUsdModule = ((args) => {
       getterSignature,
       getter,
       setterSignature,
-      setter,
+      setter
     ) {
       rawClassType >>>= 0;
       fieldName >>>= 0;
@@ -6013,7 +6063,7 @@ var getUsdModule = ((args) => {
           get() {
             throwUnboundTypeError(
               `Cannot access ${humanName} due to unbound types`,
-              [rawFieldType],
+              [rawFieldType]
             );
           },
           enumerable: true,
@@ -6023,7 +6073,7 @@ var getUsdModule = ((args) => {
           desc.set = () => {
             throwUnboundTypeError(
               `Cannot access ${humanName} due to unbound types`,
-              [rawFieldType],
+              [rawFieldType]
             );
           };
         } else {
@@ -6034,7 +6084,7 @@ var getUsdModule = ((args) => {
         Object.defineProperty(
           classType.registeredClass.constructor,
           fieldName,
-          desc,
+          desc
         );
         whenDependentTypesAreResolved([], [rawFieldType], function (fieldType) {
           fieldType = fieldType[0];
@@ -6055,7 +6105,7 @@ var getUsdModule = ((args) => {
           Object.defineProperty(
             classType.registeredClass.constructor,
             fieldName,
-            desc,
+            desc
           );
           return [];
         });
@@ -6068,7 +6118,7 @@ var getUsdModule = ((args) => {
       rawArgTypesAddr,
       invokerSignature,
       invoker,
-      rawConstructor,
+      rawConstructor
     ) {
       rawClassType >>>= 0;
       rawArgTypesAddr >>>= 0;
@@ -6087,13 +6137,17 @@ var getUsdModule = ((args) => {
           undefined !== classType.registeredClass.constructor_body[argCount - 1]
         ) {
           throw new BindingError(
-            `Cannot register multiple constructors with identical number of parameters (${argCount - 1}) for class '${classType.name}'! Overload resolution is currently only performed using the parameter count, not actual type info!`,
+            `Cannot register multiple constructors with identical number of parameters (${
+              argCount - 1
+            }) for class '${
+              classType.name
+            }'! Overload resolution is currently only performed using the parameter count, not actual type info!`
           );
         }
         classType.registeredClass.constructor_body[argCount - 1] = () => {
           throwUnboundTypeError(
             `Cannot construct ${classType.name} due to unbound types`,
-            rawArgTypes,
+            rawArgTypes
           );
         };
         whenDependentTypesAreResolved([], rawArgTypes, (argTypes) => {
@@ -6104,7 +6158,7 @@ var getUsdModule = ((args) => {
               argTypes,
               null,
               invoker,
-              rawConstructor,
+              rawConstructor
             );
           return [];
         });
@@ -6120,7 +6174,7 @@ var getUsdModule = ((args) => {
       rawInvoker,
       context,
       isPureVirtual,
-      isAsync,
+      isAsync
     ) {
       rawClassType >>>= 0;
       methodName >>>= 0;
@@ -6144,7 +6198,7 @@ var getUsdModule = ((args) => {
         function unboundTypesHandler() {
           throwUnboundTypeError(
             `Cannot call ${humanName} due to unbound types`,
-            rawArgTypes,
+            rawArgTypes
           );
         }
         var proto = classType.registeredClass.instancePrototype;
@@ -6169,7 +6223,7 @@ var getUsdModule = ((args) => {
             classType,
             rawInvoker,
             context,
-            isAsync,
+            isAsync
           );
           if (undefined === proto[methodName].overloadTable) {
             memberFunction.argCount = argCount - 2;
@@ -6192,7 +6246,7 @@ var getUsdModule = ((args) => {
       setterArgumentType,
       setterSignature,
       setter,
-      setterContext,
+      setterContext
     ) {
       classType >>>= 0;
       fieldName >>>= 0;
@@ -6213,7 +6267,7 @@ var getUsdModule = ((args) => {
           get() {
             throwUnboundTypeError(
               `Cannot access ${humanName} due to unbound types`,
-              [getterReturnType, setterArgumentType],
+              [getterReturnType, setterArgumentType]
             );
           },
           enumerable: true,
@@ -6223,7 +6277,7 @@ var getUsdModule = ((args) => {
           desc.set = () =>
             throwUnboundTypeError(
               `Cannot access ${humanName} due to unbound types`,
-              [getterReturnType, setterArgumentType],
+              [getterReturnType, setterArgumentType]
             );
         } else {
           desc.set = (v) =>
@@ -6232,7 +6286,7 @@ var getUsdModule = ((args) => {
         Object.defineProperty(
           classType.registeredClass.instancePrototype,
           fieldName,
-          desc,
+          desc
         );
         whenDependentTypesAreResolved(
           [],
@@ -6243,7 +6297,7 @@ var getUsdModule = ((args) => {
               get() {
                 var ptr = validateThis(this, classType, humanName + " getter");
                 return getterReturnType["fromWireType"](
-                  getter(getterContext, ptr),
+                  getter(getterContext, ptr)
                 );
               },
               enumerable: true,
@@ -6257,7 +6311,7 @@ var getUsdModule = ((args) => {
                 setter(
                   setterContext,
                   ptr,
-                  setterArgumentType["toWireType"](destructors, v),
+                  setterArgumentType["toWireType"](destructors, v)
                 );
                 runDestructors(destructors);
               };
@@ -6265,10 +6319,10 @@ var getUsdModule = ((args) => {
             Object.defineProperty(
               classType.registeredClass.instancePrototype,
               fieldName,
-              desc,
+              desc
             );
             return [];
-          },
+          }
         );
         return [];
       });
@@ -6324,7 +6378,7 @@ var getUsdModule = ((args) => {
         { value: undefined },
         { value: null },
         { value: true },
-        { value: false },
+        { value: false }
       );
       emval_handles.reserved = emval_handles.allocated.length;
       Module["count_emval_handles"] = count_emval_handles;
@@ -6378,36 +6432,36 @@ var getUsdModule = ((args) => {
           return signed
             ? function (pointer) {
                 return this["fromWireType"](
-                  GROWABLE_HEAP_I8()[(pointer >>> 0) >>> 0],
+                  GROWABLE_HEAP_I8()[(pointer >>> 0) >>> 0]
                 );
               }
             : function (pointer) {
                 return this["fromWireType"](
-                  GROWABLE_HEAP_U8()[(pointer >>> 0) >>> 0],
+                  GROWABLE_HEAP_U8()[(pointer >>> 0) >>> 0]
                 );
               };
         case 2:
           return signed
             ? function (pointer) {
                 return this["fromWireType"](
-                  GROWABLE_HEAP_I16()[(pointer >>> 1) >>> 0],
+                  GROWABLE_HEAP_I16()[(pointer >>> 1) >>> 0]
                 );
               }
             : function (pointer) {
                 return this["fromWireType"](
-                  GROWABLE_HEAP_U16()[(pointer >>> 1) >>> 0],
+                  GROWABLE_HEAP_U16()[(pointer >>> 1) >>> 0]
                 );
               };
         case 4:
           return signed
             ? function (pointer) {
                 return this["fromWireType"](
-                  GROWABLE_HEAP_I32()[(pointer >>> 2) >>> 0],
+                  GROWABLE_HEAP_I32()[(pointer >>> 2) >>> 0]
                 );
               }
             : function (pointer) {
                 return this["fromWireType"](
-                  GROWABLE_HEAP_U32()[(pointer >>> 2) >>> 0],
+                  GROWABLE_HEAP_U32()[(pointer >>> 2) >>> 0]
                 );
               };
         default:
@@ -6438,7 +6492,7 @@ var getUsdModule = ((args) => {
       var impl = registeredTypes[rawType];
       if (undefined === impl) {
         throwBindingError(
-          humanName + " has unknown type " + getTypeName(rawType),
+          humanName + " has unknown type " + getTypeName(rawType)
         );
       }
       return impl;
@@ -6455,7 +6509,7 @@ var getUsdModule = ((args) => {
         constructor: {
           value: createNamedFunction(
             `${enumType.name}_${name}`,
-            function () {},
+            function () {}
           ),
         },
       });
@@ -6478,13 +6532,13 @@ var getUsdModule = ((args) => {
         case 4:
           return function (pointer) {
             return this["fromWireType"](
-              GROWABLE_HEAP_F32()[(pointer >>> 2) >>> 0],
+              GROWABLE_HEAP_F32()[(pointer >>> 2) >>> 0]
             );
           };
         case 8:
           return function (pointer) {
             return this["fromWireType"](
-              GROWABLE_HEAP_F64()[(pointer >>> 3) >>> 0],
+              GROWABLE_HEAP_F64()[(pointer >>> 3) >>> 0]
             );
           };
         default:
@@ -6512,7 +6566,7 @@ var getUsdModule = ((args) => {
       signature,
       rawInvoker,
       fn,
-      isAsync,
+      isAsync
     ) {
       name >>>= 0;
       rawArgTypesAddr >>>= 0;
@@ -6528,10 +6582,10 @@ var getUsdModule = ((args) => {
         function () {
           throwUnboundTypeError(
             `Cannot call ${name} due to unbound types`,
-            argTypes,
+            argTypes
           );
         },
-        argCount - 1,
+        argCount - 1
       );
       whenDependentTypesAreResolved([], argTypes, function (argTypes) {
         var invokerArgsArray = [argTypes[0], null].concat(argTypes.slice(1));
@@ -6543,9 +6597,9 @@ var getUsdModule = ((args) => {
             null,
             rawInvoker,
             fn,
-            isAsync,
+            isAsync
           ),
-          argCount - 1,
+          argCount - 1
         );
         return [];
       });
@@ -6573,7 +6627,7 @@ var getUsdModule = ((args) => {
       name,
       size,
       minRange,
-      maxRange,
+      maxRange
     ) {
       primitiveType >>>= 0;
       name >>>= 0;
@@ -6609,7 +6663,7 @@ var getUsdModule = ((args) => {
         readValueFromPointer: integerReadValueFromPointer(
           name,
           size,
-          minRange !== 0,
+          minRange !== 0
         ),
         destructorFunction: null,
       });
@@ -6642,7 +6696,7 @@ var getUsdModule = ((args) => {
           argPackAdvance: GenericWireTypeSize,
           readValueFromPointer: decodeMemoryView,
         },
-        { ignoreDuplicateRegistrations: true },
+        { ignoreDuplicateRegistrations: true }
       );
     }
     function __embind_register_smart_ptr(
@@ -6657,7 +6711,7 @@ var getUsdModule = ((args) => {
       shareSignature,
       rawShare,
       destructorSignature,
-      rawDestructor,
+      rawDestructor
     ) {
       rawType >>>= 0;
       rawPointeeType >>>= 0;
@@ -6673,16 +6727,16 @@ var getUsdModule = ((args) => {
       name = readLatin1String(name);
       rawGetPointee = embind__requireFunction(
         getPointeeSignature,
-        rawGetPointee,
+        rawGetPointee
       );
       rawConstructor = embind__requireFunction(
         constructorSignature,
-        rawConstructor,
+        rawConstructor
       );
       rawShare = embind__requireFunction(shareSignature, rawShare);
       rawDestructor = embind__requireFunction(
         destructorSignature,
-        rawDestructor,
+        rawDestructor
       );
       whenDependentTypesAreResolved(
         [rawType],
@@ -6700,10 +6754,10 @@ var getUsdModule = ((args) => {
             rawGetPointee,
             rawConstructor,
             rawShare,
-            rawDestructor,
+            rawDestructor
           );
           return [registeredPointer];
-        },
+        }
       );
     }
     function __embind_register_std_string(rawType, name) {
@@ -6740,7 +6794,7 @@ var getUsdModule = ((args) => {
             var a = new Array(length);
             for (var i = 0; i < length; ++i) {
               a[i] = String.fromCharCode(
-                GROWABLE_HEAP_U8()[(payload + i) >>> 0],
+                GROWABLE_HEAP_U8()[(payload + i) >>> 0]
               );
             }
             str = a.join("");
@@ -6781,7 +6835,7 @@ var getUsdModule = ((args) => {
                 if (charCode > 255) {
                   _free(ptr);
                   throwBindingError(
-                    "String has UTF-16 code units that do not fit in 8 bits",
+                    "String has UTF-16 code units that do not fit in 8 bits"
                   );
                 }
                 GROWABLE_HEAP_U8()[(ptr + i) >>> 0] = charCode;
@@ -6935,7 +6989,7 @@ var getUsdModule = ((args) => {
         toWireType: (destructors, value) => {
           if (!(typeof value == "string")) {
             throwBindingError(
-              `Cannot pass non-string to C++ string type ${name}`,
+              `Cannot pass non-string to C++ string type ${name}`
             );
           }
           var length = lengthBytesUTF(value);
@@ -6974,7 +7028,7 @@ var getUsdModule = ((args) => {
         var wait = Atomics.waitAsync(
           GROWABLE_HEAP_I32(),
           pthread_ptr >>> 2,
-          pthread_ptr,
+          pthread_ptr
         );
         wait.value.then(checkMailbox);
         var waitingAsync = pthread_ptr + 128;
@@ -6994,7 +7048,7 @@ var getUsdModule = ((args) => {
     var __emscripten_notify_mailbox_postmessage = function (
       targetThreadId,
       currThreadId,
-      mainThreadId,
+      mainThreadId
     ) {
       targetThreadId >>>= 0;
       currThreadId >>>= 0;
@@ -7032,7 +7086,7 @@ var getUsdModule = ((args) => {
           index,
           serializedNumCallArgs,
           args,
-          sync,
+          sync
         );
       });
     };
@@ -7041,7 +7095,7 @@ var getUsdModule = ((args) => {
       index,
       callingThread,
       numCallArgs,
-      args,
+      args
     ) {
       callingThread >>>= 0;
       args >>>= 0;
@@ -7097,7 +7151,7 @@ var getUsdModule = ((args) => {
       for (var i = 0; i < argCount; ++i) {
         a[i] = requireRegisteredType(
           GROWABLE_HEAP_U32()[((argTypes + i * 4) >>> 2) >>> 0],
-          "parameter " + i,
+          "parameter " + i
         );
       }
       return a;
@@ -7131,7 +7185,7 @@ var getUsdModule = ((args) => {
       handle,
       methodName,
       destructorsRef,
-      args,
+      args
     ) {
       caller >>>= 0;
       handle >>>= 0;
@@ -7289,7 +7343,7 @@ var getUsdModule = ((args) => {
       offset_low,
       offset_high,
       allocated,
-      addr,
+      addr
     ) {
       if (ENVIRONMENT_IS_PTHREAD)
         return proxyToMainThread(
@@ -7302,7 +7356,7 @@ var getUsdModule = ((args) => {
           offset_low,
           offset_high,
           allocated,
-          addr,
+          addr
         );
       len >>>= 0;
       var offset = convertI32PairToI53Checked(offset_low, offset_high);
@@ -7332,7 +7386,7 @@ var getUsdModule = ((args) => {
           flags,
           fd,
           offset_low,
-          offset_high,
+          offset_high
         );
       addr >>>= 0;
       len >>>= 0;
@@ -7363,7 +7417,7 @@ var getUsdModule = ((args) => {
       var id = setTimeout(() => {
         delete timers[which];
         callUserCallback(() =>
-          __emscripten_timeout(which, _emscripten_get_now()),
+          __emscripten_timeout(which, _emscripten_get_now())
         );
       }, timeout_ms);
       timers[which] = { id: id, timeout_ms: timeout_ms };
@@ -7424,11 +7478,11 @@ var getUsdModule = ((args) => {
         var overGrownHeapSize = oldSize * (1 + 0.2 / cutDown);
         overGrownHeapSize = Math.min(
           overGrownHeapSize,
-          requestedSize + 100663296,
+          requestedSize + 100663296
         );
         var newSize = Math.min(
           maxHeapSize,
-          alignUp(Math.max(requestedSize, overGrownHeapSize), 65536),
+          alignUp(Math.max(requestedSize, overGrownHeapSize), 65536)
         );
         var replacement = growMemory(newSize);
         if (replacement) {
@@ -7524,10 +7578,10 @@ var getUsdModule = ((args) => {
           var type = stream.tty
             ? 2
             : FS.isDir(stream.mode)
-              ? 3
-              : FS.isLink(stream.mode)
-                ? 7
-                : 4;
+            ? 3
+            : FS.isLink(stream.mode)
+            ? 7
+            : 4;
         }
         GROWABLE_HEAP_I8()[(pbuf >>> 0) >>> 0] = type;
         GROWABLE_HEAP_I16()[((pbuf + 2) >>> 1) >>> 0] = flags;
@@ -7538,7 +7592,7 @@ var getUsdModule = ((args) => {
             ? tempDouble > 0
               ? +Math.floor(tempDouble / 4294967296) >>> 0
               : ~~+Math.ceil(
-                  (tempDouble - +(~~tempDouble >>> 0)) / 4294967296,
+                  (tempDouble - +(~~tempDouble >>> 0)) / 4294967296
                 ) >>> 0
             : 0),
         ]),
@@ -7551,7 +7605,7 @@ var getUsdModule = ((args) => {
             ? tempDouble > 0
               ? +Math.floor(tempDouble / 4294967296) >>> 0
               : ~~+Math.ceil(
-                  (tempDouble - +(~~tempDouble >>> 0)) / 4294967296,
+                  (tempDouble - +(~~tempDouble >>> 0)) / 4294967296
                 ) >>> 0
             : 0),
         ]),
@@ -7589,7 +7643,7 @@ var getUsdModule = ((args) => {
           iovcnt,
           offset_low,
           offset_high,
-          pnum,
+          pnum
         );
       iov >>>= 0;
       iovcnt >>>= 0;
@@ -7631,7 +7685,7 @@ var getUsdModule = ((args) => {
           iovcnt,
           offset_low,
           offset_high,
-          pnum,
+          pnum
         );
       iov >>>= 0;
       iovcnt >>>= 0;
@@ -7673,7 +7727,7 @@ var getUsdModule = ((args) => {
           offset_low,
           offset_high,
           whence,
-          newOffset,
+          newOffset
         );
       var offset = convertI32PairToI53Checked(offset_low, offset_high);
       newOffset >>>= 0;
@@ -7688,7 +7742,7 @@ var getUsdModule = ((args) => {
             ? tempDouble > 0
               ? +Math.floor(tempDouble / 4294967296) >>> 0
               : ~~+Math.ceil(
-                  (tempDouble - +(~~tempDouble >>> 0)) / 4294967296,
+                  (tempDouble - +(~~tempDouble >>> 0)) / 4294967296
                 ) >>> 0
             : 0),
         ]),
@@ -7811,7 +7865,7 @@ var getUsdModule = ((args) => {
       for (var rule in EXPANSION_RULES_1) {
         pattern = pattern.replace(
           new RegExp(rule, "g"),
-          EXPANSION_RULES_1[rule],
+          EXPANSION_RULES_1[rule]
         );
       }
       var WEEKDAYS = [
@@ -7880,7 +7934,7 @@ var getUsdModule = ((args) => {
       function getWeekBasedYear(date) {
         var thisDate = addDays(
           new Date(date.tm_year + 1900, 0, 1),
-          date.tm_yday,
+          date.tm_yday
         );
         var janFourthThisYear = new Date(thisDate.getFullYear(), 0, 4);
         var janFourthNextYear = new Date(thisDate.getFullYear() + 1, 0, 4);
@@ -7921,9 +7975,9 @@ var getUsdModule = ((args) => {
                 isLeapYear(date.tm_year + 1900)
                   ? MONTH_DAYS_LEAP
                   : MONTH_DAYS_REGULAR,
-                date.tm_mon - 1,
+                date.tm_mon - 1
               ),
-            3,
+            3
           ),
         "%m": (date) => leadingNulls(date.tm_mon + 1, 2),
         "%M": (date) => leadingNulls(date.tm_min, 2),
@@ -7943,7 +7997,7 @@ var getUsdModule = ((args) => {
         },
         "%V": (date) => {
           var val = Math.floor(
-            (date.tm_yday + 7 - ((date.tm_wday + 6) % 7)) / 7,
+            (date.tm_yday + 7 - ((date.tm_wday + 6) % 7)) / 7
           );
           if ((date.tm_wday + 371 - date.tm_yday - 2) % 7 <= 2) {
             val++;
@@ -7985,7 +8039,7 @@ var getUsdModule = ((args) => {
         if (pattern.includes(rule)) {
           pattern = pattern.replace(
             new RegExp(rule, "g"),
-            EXPANSION_RULES_2[rule](date),
+            EXPANSION_RULES_2[rule](date)
           );
         }
       }
@@ -8082,7 +8136,7 @@ var getUsdModule = ((args) => {
     init_RegisteredPointer();
     UnboundTypeError = Module["UnboundTypeError"] = extendError(
       Error,
-      "UnboundTypeError",
+      "UnboundTypeError"
     );
     handleAllocatorInit();
     init_emval();
@@ -8392,7 +8446,7 @@ var getUsdModule = ((args) => {
       a2,
       a3,
       a4,
-      a5,
+      a5
     ) =>
       (__emscripten_thread_init = Module["__emscripten_thread_init"] =
         wasmExports["Ld"])(a0, a1, a2, a3, a4, a5));
@@ -8441,7 +8495,7 @@ var getUsdModule = ((args) => {
         a0,
         a1,
         a2,
-        a3,
+        a3
       ));
     var dynCall_vi = (Module["dynCall_vi"] = (a0, a1) =>
       (dynCall_vi = Module["dynCall_vi"] = wasmExports["ce"])(a0, a1));
@@ -8454,7 +8508,7 @@ var getUsdModule = ((args) => {
         a2,
         a3,
         a4,
-        a5,
+        a5
       ));
     var dynCall_vii = (Module["dynCall_vii"] = (a0, a1, a2) =>
       (dynCall_vii = Module["dynCall_vii"] = wasmExports["fe"])(a0, a1, a2));
@@ -8467,7 +8521,7 @@ var getUsdModule = ((args) => {
         a2,
         a3,
         a4,
-        a5,
+        a5
       ));
     var dynCall_v = (Module["dynCall_v"] = (a0) =>
       (dynCall_v = Module["dynCall_v"] = wasmExports["ie"])(a0));
@@ -8476,7 +8530,7 @@ var getUsdModule = ((args) => {
         a0,
         a1,
         a2,
-        a3,
+        a3
       ));
     var dynCall_vid = (Module["dynCall_vid"] = (a0, a1, a2) =>
       (dynCall_vid = Module["dynCall_vid"] = wasmExports["ke"])(a0, a1, a2));
@@ -8488,7 +8542,7 @@ var getUsdModule = ((args) => {
         a1,
         a2,
         a3,
-        a4,
+        a4
       ));
     var dynCall_viiii = (Module["dynCall_viiii"] = (a0, a1, a2, a3, a4) =>
       (dynCall_viiii = Module["dynCall_viiii"] = wasmExports["ne"])(
@@ -8496,14 +8550,14 @@ var getUsdModule = ((args) => {
         a1,
         a2,
         a3,
-        a4,
+        a4
       ));
     var dynCall_viid = (Module["dynCall_viid"] = (a0, a1, a2, a3) =>
       (dynCall_viid = Module["dynCall_viid"] = wasmExports["oe"])(
         a0,
         a1,
         a2,
-        a3,
+        a3
       ));
     var dynCall_dii = (Module["dynCall_dii"] = (a0, a1, a2) =>
       (dynCall_dii = Module["dynCall_dii"] = wasmExports["pe"])(a0, a1, a2));
@@ -8513,7 +8567,7 @@ var getUsdModule = ((args) => {
         a1,
         a2,
         a3,
-        a4,
+        a4
       ));
     var dynCall_iiiid = (Module["dynCall_iiiid"] = (a0, a1, a2, a3, a4) =>
       (dynCall_iiiid = Module["dynCall_iiiid"] = wasmExports["re"])(
@@ -8521,7 +8575,7 @@ var getUsdModule = ((args) => {
         a1,
         a2,
         a3,
-        a4,
+        a4
       ));
     var dynCall_iiiiiiii = (Module["dynCall_iiiiiiii"] = (
       a0,
@@ -8531,7 +8585,7 @@ var getUsdModule = ((args) => {
       a4,
       a5,
       a6,
-      a7,
+      a7
     ) =>
       (dynCall_iiiiiiii = Module["dynCall_iiiiiiii"] = wasmExports["se"])(
         a0,
@@ -8541,7 +8595,7 @@ var getUsdModule = ((args) => {
         a4,
         a5,
         a6,
-        a7,
+        a7
       ));
     var dynCall_viiiiii = (Module["dynCall_viiiiii"] = (
       a0,
@@ -8550,7 +8604,7 @@ var getUsdModule = ((args) => {
       a3,
       a4,
       a5,
-      a6,
+      a6
     ) =>
       (dynCall_viiiiii = Module["dynCall_viiiiii"] = wasmExports["te"])(
         a0,
@@ -8559,7 +8613,7 @@ var getUsdModule = ((args) => {
         a3,
         a4,
         a5,
-        a6,
+        a6
       ));
     var dynCall_iiiiiii = (Module["dynCall_iiiiiii"] = (
       a0,
@@ -8568,7 +8622,7 @@ var getUsdModule = ((args) => {
       a3,
       a4,
       a5,
-      a6,
+      a6
     ) =>
       (dynCall_iiiiiii = Module["dynCall_iiiiiii"] = wasmExports["ue"])(
         a0,
@@ -8577,14 +8631,14 @@ var getUsdModule = ((args) => {
         a3,
         a4,
         a5,
-        a6,
+        a6
       ));
     var dynCall_diii = (Module["dynCall_diii"] = (a0, a1, a2, a3) =>
       (dynCall_diii = Module["dynCall_diii"] = wasmExports["ve"])(
         a0,
         a1,
         a2,
-        a3,
+        a3
       ));
     var dynCall_j = (Module["dynCall_j"] = (a0) =>
       (dynCall_j = Module["dynCall_j"] = wasmExports["we"])(a0));
@@ -8593,7 +8647,7 @@ var getUsdModule = ((args) => {
         a0,
         a1,
         a2,
-        a3,
+        a3
       ));
     var dynCall_iiiiid = (Module["dynCall_iiiiid"] = (a0, a1, a2, a3, a4, a5) =>
       (dynCall_iiiiid = Module["dynCall_iiiiid"] = wasmExports["ye"])(
@@ -8602,7 +8656,7 @@ var getUsdModule = ((args) => {
         a2,
         a3,
         a4,
-        a5,
+        a5
       ));
     var dynCall_vd = (Module["dynCall_vd"] = (a0, a1) =>
       (dynCall_vd = Module["dynCall_vd"] = wasmExports["ze"])(a0, a1));
@@ -8618,7 +8672,7 @@ var getUsdModule = ((args) => {
       a8,
       a9,
       a10,
-      a11,
+      a11
     ) =>
       (dynCall_iiiiiiiiiiii = Module["dynCall_iiiiiiiiiiii"] =
         wasmExports["Ae"])(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11));
@@ -8630,7 +8684,7 @@ var getUsdModule = ((args) => {
         a1,
         a2,
         a3,
-        a4,
+        a4
       ));
     var dynCall_iidiii = (Module["dynCall_iidiii"] = (a0, a1, a2, a3, a4, a5) =>
       (dynCall_iidiii = Module["dynCall_iidiii"] = wasmExports["De"])(
@@ -8639,7 +8693,7 @@ var getUsdModule = ((args) => {
         a2,
         a3,
         a4,
-        a5,
+        a5
       ));
     var dynCall_iiiiiiiii = (Module["dynCall_iiiiiiiii"] = (
       a0,
@@ -8650,7 +8704,7 @@ var getUsdModule = ((args) => {
       a5,
       a6,
       a7,
-      a8,
+      a8
     ) =>
       (dynCall_iiiiiiiii = Module["dynCall_iiiiiiiii"] = wasmExports["Ee"])(
         a0,
@@ -8661,7 +8715,7 @@ var getUsdModule = ((args) => {
         a5,
         a6,
         a7,
-        a8,
+        a8
       ));
     var dynCall_iiiiiiiiii = (Module["dynCall_iiiiiiiiii"] = (
       a0,
@@ -8673,7 +8727,7 @@ var getUsdModule = ((args) => {
       a6,
       a7,
       a8,
-      a9,
+      a9
     ) =>
       (dynCall_iiiiiiiiii = Module["dynCall_iiiiiiiiii"] = wasmExports["Fe"])(
         a0,
@@ -8685,7 +8739,7 @@ var getUsdModule = ((args) => {
         a6,
         a7,
         a8,
-        a9,
+        a9
       ));
     var dynCall_iiidi = (Module["dynCall_iiidi"] = (a0, a1, a2, a3, a4) =>
       (dynCall_iiidi = Module["dynCall_iiidi"] = wasmExports["Ge"])(
@@ -8693,14 +8747,14 @@ var getUsdModule = ((args) => {
         a1,
         a2,
         a3,
-        a4,
+        a4
       ));
     var dynCall_fiii = (Module["dynCall_fiii"] = (a0, a1, a2, a3) =>
       (dynCall_fiii = Module["dynCall_fiii"] = wasmExports["He"])(
         a0,
         a1,
         a2,
-        a3,
+        a3
       ));
     var dynCall_iiifi = (Module["dynCall_iiifi"] = (a0, a1, a2, a3, a4) =>
       (dynCall_iiifi = Module["dynCall_iiifi"] = wasmExports["Ie"])(
@@ -8708,14 +8762,14 @@ var getUsdModule = ((args) => {
         a1,
         a2,
         a3,
-        a4,
+        a4
       ));
     var dynCall_viif = (Module["dynCall_viif"] = (a0, a1, a2, a3) =>
       (dynCall_viif = Module["dynCall_viif"] = wasmExports["Je"])(
         a0,
         a1,
         a2,
-        a3,
+        a3
       ));
     var dynCall_iiffi = (Module["dynCall_iiffi"] = (a0, a1, a2, a3, a4) =>
       (dynCall_iiffi = Module["dynCall_iiffi"] = wasmExports["Ke"])(
@@ -8723,7 +8777,7 @@ var getUsdModule = ((args) => {
         a1,
         a2,
         a3,
-        a4,
+        a4
       ));
     var dynCall_fif = (Module["dynCall_fif"] = (a0, a1, a2) =>
       (dynCall_fif = Module["dynCall_fif"] = wasmExports["Le"])(a0, a1, a2));
@@ -8739,7 +8793,7 @@ var getUsdModule = ((args) => {
       a4,
       a5,
       a6,
-      a7,
+      a7
     ) =>
       (dynCall_viiiiiii = Module["dynCall_viiiiiii"] = wasmExports["Oe"])(
         a0,
@@ -8749,7 +8803,7 @@ var getUsdModule = ((args) => {
         a4,
         a5,
         a6,
-        a7,
+        a7
       ));
     var dynCall_viiiiiiii = (Module["dynCall_viiiiiiii"] = (
       a0,
@@ -8760,7 +8814,7 @@ var getUsdModule = ((args) => {
       a5,
       a6,
       a7,
-      a8,
+      a8
     ) =>
       (dynCall_viiiiiiii = Module["dynCall_viiiiiiii"] = wasmExports["Pe"])(
         a0,
@@ -8771,7 +8825,7 @@ var getUsdModule = ((args) => {
         a5,
         a6,
         a7,
-        a8,
+        a8
       ));
     var dynCall_iidii = (Module["dynCall_iidii"] = (a0, a1, a2, a3, a4) =>
       (dynCall_iidii = Module["dynCall_iidii"] = wasmExports["Qe"])(
@@ -8779,7 +8833,7 @@ var getUsdModule = ((args) => {
         a1,
         a2,
         a3,
-        a4,
+        a4
       ));
     var dynCall_viiidiiiii = (Module["dynCall_viiidiiiii"] = (
       a0,
@@ -8791,7 +8845,7 @@ var getUsdModule = ((args) => {
       a6,
       a7,
       a8,
-      a9,
+      a9
     ) =>
       (dynCall_viiidiiiii = Module["dynCall_viiidiiiii"] = wasmExports["Re"])(
         a0,
@@ -8803,7 +8857,7 @@ var getUsdModule = ((args) => {
         a6,
         a7,
         a8,
-        a9,
+        a9
       ));
     var dynCall_viiiidi = (Module["dynCall_viiiidi"] = (
       a0,
@@ -8812,7 +8866,7 @@ var getUsdModule = ((args) => {
       a3,
       a4,
       a5,
-      a6,
+      a6
     ) =>
       (dynCall_viiiidi = Module["dynCall_viiiidi"] = wasmExports["Se"])(
         a0,
@@ -8821,7 +8875,7 @@ var getUsdModule = ((args) => {
         a3,
         a4,
         a5,
-        a6,
+        a6
       ));
     var dynCall_viiidii = (Module["dynCall_viiidii"] = (
       a0,
@@ -8830,7 +8884,7 @@ var getUsdModule = ((args) => {
       a3,
       a4,
       a5,
-      a6,
+      a6
     ) =>
       (dynCall_viiidii = Module["dynCall_viiidii"] = wasmExports["Te"])(
         a0,
@@ -8839,7 +8893,7 @@ var getUsdModule = ((args) => {
         a3,
         a4,
         a5,
-        a6,
+        a6
       ));
     var dynCall_viiiid = (Module["dynCall_viiiid"] = (a0, a1, a2, a3, a4, a5) =>
       (dynCall_viiiid = Module["dynCall_viiiid"] = wasmExports["Ue"])(
@@ -8848,7 +8902,7 @@ var getUsdModule = ((args) => {
         a2,
         a3,
         a4,
-        a5,
+        a5
       ));
     var dynCall_iiiidiii = (Module["dynCall_iiiidiii"] = (
       a0,
@@ -8858,7 +8912,7 @@ var getUsdModule = ((args) => {
       a4,
       a5,
       a6,
-      a7,
+      a7
     ) =>
       (dynCall_iiiidiii = Module["dynCall_iiiidiii"] = wasmExports["Ve"])(
         a0,
@@ -8868,7 +8922,7 @@ var getUsdModule = ((args) => {
         a4,
         a5,
         a6,
-        a7,
+        a7
       ));
     var dynCall_iiiiidiiii = (Module["dynCall_iiiiidiiii"] = (
       a0,
@@ -8880,7 +8934,7 @@ var getUsdModule = ((args) => {
       a6,
       a7,
       a8,
-      a9,
+      a9
     ) =>
       (dynCall_iiiiidiiii = Module["dynCall_iiiiidiiii"] = wasmExports["We"])(
         a0,
@@ -8892,7 +8946,7 @@ var getUsdModule = ((args) => {
         a6,
         a7,
         a8,
-        a9,
+        a9
       ));
     var dynCall_viiiiid = (Module["dynCall_viiiiid"] = (
       a0,
@@ -8901,7 +8955,7 @@ var getUsdModule = ((args) => {
       a3,
       a4,
       a5,
-      a6,
+      a6
     ) =>
       (dynCall_viiiiid = Module["dynCall_viiiiid"] = wasmExports["Xe"])(
         a0,
@@ -8910,7 +8964,7 @@ var getUsdModule = ((args) => {
         a3,
         a4,
         a5,
-        a6,
+        a6
       ));
     var dynCall_viiiiidi = (Module["dynCall_viiiiidi"] = (
       a0,
@@ -8920,7 +8974,7 @@ var getUsdModule = ((args) => {
       a4,
       a5,
       a6,
-      a7,
+      a7
     ) =>
       (dynCall_viiiiidi = Module["dynCall_viiiiidi"] = wasmExports["Ye"])(
         a0,
@@ -8930,7 +8984,7 @@ var getUsdModule = ((args) => {
         a4,
         a5,
         a6,
-        a7,
+        a7
       ));
     var dynCall_viiiddddi = (Module["dynCall_viiiddddi"] = (
       a0,
@@ -8941,7 +8995,7 @@ var getUsdModule = ((args) => {
       a5,
       a6,
       a7,
-      a8,
+      a8
     ) =>
       (dynCall_viiiddddi = Module["dynCall_viiiddddi"] = wasmExports["Ze"])(
         a0,
@@ -8952,7 +9006,7 @@ var getUsdModule = ((args) => {
         a5,
         a6,
         a7,
-        a8,
+        a8
       ));
     var dynCall_viiddi = (Module["dynCall_viiddi"] = (a0, a1, a2, a3, a4, a5) =>
       (dynCall_viiddi = Module["dynCall_viiddi"] = wasmExports["_e"])(
@@ -8961,7 +9015,7 @@ var getUsdModule = ((args) => {
         a2,
         a3,
         a4,
-        a5,
+        a5
       ));
     var dynCall_vidddi = (Module["dynCall_vidddi"] = (a0, a1, a2, a3, a4, a5) =>
       (dynCall_vidddi = Module["dynCall_vidddi"] = wasmExports["$e"])(
@@ -8970,7 +9024,7 @@ var getUsdModule = ((args) => {
         a2,
         a3,
         a4,
-        a5,
+        a5
       ));
     var dynCall_viiddddi = (Module["dynCall_viiddddi"] = (
       a0,
@@ -8980,7 +9034,7 @@ var getUsdModule = ((args) => {
       a4,
       a5,
       a6,
-      a7,
+      a7
     ) =>
       (dynCall_viiddddi = Module["dynCall_viiddddi"] = wasmExports["af"])(
         a0,
@@ -8990,7 +9044,7 @@ var getUsdModule = ((args) => {
         a4,
         a5,
         a6,
-        a7,
+        a7
       ));
     var dynCall_fid = (Module["dynCall_fid"] = (a0, a1, a2) =>
       (dynCall_fid = Module["dynCall_fid"] = wasmExports["bf"])(a0, a1, a2));
@@ -9001,7 +9055,7 @@ var getUsdModule = ((args) => {
       a3,
       a4,
       a5,
-      a6,
+      a6
     ) =>
       (dynCall_iiiiiid = Module["dynCall_iiiiiid"] = wasmExports["cf"])(
         a0,
@@ -9010,7 +9064,7 @@ var getUsdModule = ((args) => {
         a3,
         a4,
         a5,
-        a6,
+        a6
       ));
     var dynCall_vif = (Module["dynCall_vif"] = (a0, a1, a2) =>
       (dynCall_vif = Module["dynCall_vif"] = wasmExports["df"])(a0, a1, a2));
@@ -9021,7 +9075,7 @@ var getUsdModule = ((args) => {
         a2,
         a3,
         a4,
-        a5,
+        a5
       ));
     var dynCall_viddi = (Module["dynCall_viddi"] = (a0, a1, a2, a3, a4) =>
       (dynCall_viddi = Module["dynCall_viddi"] = wasmExports["ff"])(
@@ -9029,7 +9083,7 @@ var getUsdModule = ((args) => {
         a1,
         a2,
         a3,
-        a4,
+        a4
       ));
     var dynCall_viiiiiiid = (Module["dynCall_viiiiiiid"] = (
       a0,
@@ -9040,7 +9094,7 @@ var getUsdModule = ((args) => {
       a5,
       a6,
       a7,
-      a8,
+      a8
     ) =>
       (dynCall_viiiiiiid = Module["dynCall_viiiiiiid"] = wasmExports["gf"])(
         a0,
@@ -9051,7 +9105,7 @@ var getUsdModule = ((args) => {
         a5,
         a6,
         a7,
-        a8,
+        a8
       ));
     var dynCall_jiij = (Module["dynCall_jiij"] = (a0, a1, a2, a3, a4) =>
       (dynCall_jiij = Module["dynCall_jiij"] = wasmExports["hf"])(
@@ -9059,7 +9113,7 @@ var getUsdModule = ((args) => {
         a1,
         a2,
         a3,
-        a4,
+        a4
       ));
     var dynCall_ji = (Module["dynCall_ji"] = (a0, a1) =>
       (dynCall_ji = Module["dynCall_ji"] = wasmExports["jf"])(a0, a1));
@@ -9076,7 +9130,7 @@ var getUsdModule = ((args) => {
       a9,
       a10,
       a11,
-      a12,
+      a12
     ) =>
       (dynCall_iiiifffffiiff = Module["dynCall_iiiifffffiiff"] =
         wasmExports["kf"])(
@@ -9092,7 +9146,7 @@ var getUsdModule = ((args) => {
         a9,
         a10,
         a11,
-        a12,
+        a12
       ));
     var dynCall_jif = (Module["dynCall_jif"] = (a0, a1, a2) =>
       (dynCall_jif = Module["dynCall_jif"] = wasmExports["lf"])(a0, a1, a2));
@@ -9102,7 +9156,7 @@ var getUsdModule = ((args) => {
         a1,
         a2,
         a3,
-        a4,
+        a4
       ));
     var dynCall_vfiiii = (Module["dynCall_vfiiii"] = (a0, a1, a2, a3, a4, a5) =>
       (dynCall_vfiiii = Module["dynCall_vfiiii"] = wasmExports["nf"])(
@@ -9111,14 +9165,14 @@ var getUsdModule = ((args) => {
         a2,
         a3,
         a4,
-        a5,
+        a5
       ));
     var dynCall_ifii = (Module["dynCall_ifii"] = (a0, a1, a2, a3) =>
       (dynCall_ifii = Module["dynCall_ifii"] = wasmExports["of"])(
         a0,
         a1,
         a2,
-        a3,
+        a3
       ));
     var dynCall_jiiijji = (Module["dynCall_jiiijji"] = (
       a0,
@@ -9129,7 +9183,7 @@ var getUsdModule = ((args) => {
       a5,
       a6,
       a7,
-      a8,
+      a8
     ) =>
       (dynCall_jiiijji = Module["dynCall_jiiijji"] = wasmExports["pf"])(
         a0,
@@ -9140,7 +9194,7 @@ var getUsdModule = ((args) => {
         a5,
         a6,
         a7,
-        a8,
+        a8
       ));
     var dynCall_viiif = (Module["dynCall_viiif"] = (a0, a1, a2, a3, a4) =>
       (dynCall_viiif = Module["dynCall_viiif"] = wasmExports["qf"])(
@@ -9148,7 +9202,7 @@ var getUsdModule = ((args) => {
         a1,
         a2,
         a3,
-        a4,
+        a4
       ));
     var dynCall_iiiiiiiiiiiiiiiiiiii = (Module["dynCall_iiiiiiiiiiiiiiiiiiii"] =
       (
@@ -9171,7 +9225,7 @@ var getUsdModule = ((args) => {
         a16,
         a17,
         a18,
-        a19,
+        a19
       ) =>
         (dynCall_iiiiiiiiiiiiiiiiiiii = Module["dynCall_iiiiiiiiiiiiiiiiiiii"] =
           wasmExports["rf"])(
@@ -9194,7 +9248,7 @@ var getUsdModule = ((args) => {
           a16,
           a17,
           a18,
-          a19,
+          a19
         ));
     var dynCall_viiiiiiiiii = (Module["dynCall_viiiiiiiiii"] = (
       a0,
@@ -9207,7 +9261,7 @@ var getUsdModule = ((args) => {
       a7,
       a8,
       a9,
-      a10,
+      a10
     ) =>
       (dynCall_viiiiiiiiii = Module["dynCall_viiiiiiiiii"] = wasmExports["sf"])(
         a0,
@@ -9220,7 +9274,7 @@ var getUsdModule = ((args) => {
         a7,
         a8,
         a9,
-        a10,
+        a10
       ));
     var dynCall_viiiiiiiii = (Module["dynCall_viiiiiiiii"] = (
       a0,
@@ -9232,7 +9286,7 @@ var getUsdModule = ((args) => {
       a6,
       a7,
       a8,
-      a9,
+      a9
     ) =>
       (dynCall_viiiiiiiii = Module["dynCall_viiiiiiiii"] = wasmExports["tf"])(
         a0,
@@ -9244,7 +9298,7 @@ var getUsdModule = ((args) => {
         a6,
         a7,
         a8,
-        a9,
+        a9
       ));
     var dynCall_iiiiiiiiiiiii = (Module["dynCall_iiiiiiiiiiiii"] = (
       a0,
@@ -9259,7 +9313,7 @@ var getUsdModule = ((args) => {
       a9,
       a10,
       a11,
-      a12,
+      a12
     ) =>
       (dynCall_iiiiiiiiiiiii = Module["dynCall_iiiiiiiiiiiii"] =
         wasmExports["uf"])(
@@ -9275,7 +9329,7 @@ var getUsdModule = ((args) => {
         a9,
         a10,
         a11,
-        a12,
+        a12
       ));
     var dynCall_ff = (Module["dynCall_ff"] = (a0, a1) =>
       (dynCall_ff = Module["dynCall_ff"] = wasmExports["vf"])(a0, a1));
@@ -9289,7 +9343,7 @@ var getUsdModule = ((args) => {
       a4,
       a5,
       a6,
-      a7,
+      a7
     ) =>
       (dynCall_iiijiii = Module["dynCall_iiijiii"] = wasmExports["xf"])(
         a0,
@@ -9299,7 +9353,7 @@ var getUsdModule = ((args) => {
         a4,
         a5,
         a6,
-        a7,
+        a7
       ));
     var dynCall_jii = (Module["dynCall_jii"] = (a0, a1, a2) =>
       (dynCall_jii = Module["dynCall_jii"] = wasmExports["yf"])(a0, a1, a2));
@@ -9309,7 +9363,7 @@ var getUsdModule = ((args) => {
         a1,
         a2,
         a3,
-        a4,
+        a4
       ));
     var dynCall_iiiji = (Module["dynCall_iiiji"] = (a0, a1, a2, a3, a4, a5) =>
       (dynCall_iiiji = Module["dynCall_iiiji"] = wasmExports["Af"])(
@@ -9318,7 +9372,7 @@ var getUsdModule = ((args) => {
         a2,
         a3,
         a4,
-        a5,
+        a5
       ));
     var dynCall_iiiiiiiiiiiiii = (Module["dynCall_iiiiiiiiiiiiii"] = (
       a0,
@@ -9334,7 +9388,7 @@ var getUsdModule = ((args) => {
       a10,
       a11,
       a12,
-      a13,
+      a13
     ) =>
       (dynCall_iiiiiiiiiiiiii = Module["dynCall_iiiiiiiiiiiiii"] =
         wasmExports["Bf"])(
@@ -9351,7 +9405,7 @@ var getUsdModule = ((args) => {
         a10,
         a11,
         a12,
-        a13,
+        a13
       ));
     var dynCall_iiddddddiiii = (Module["dynCall_iiddddddiiii"] = (
       a0,
@@ -9365,7 +9419,7 @@ var getUsdModule = ((args) => {
       a8,
       a9,
       a10,
-      a11,
+      a11
     ) =>
       (dynCall_iiddddddiiii = Module["dynCall_iiddddddiiii"] =
         wasmExports["Cf"])(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11));
@@ -9377,7 +9431,7 @@ var getUsdModule = ((args) => {
       a4,
       a5,
       a6,
-      a7,
+      a7
     ) =>
       (dynCall_iidiiiii = Module["dynCall_iidiiiii"] = wasmExports["Df"])(
         a0,
@@ -9387,7 +9441,7 @@ var getUsdModule = ((args) => {
         a4,
         a5,
         a6,
-        a7,
+        a7
       ));
     var dynCall_iddiii = (Module["dynCall_iddiii"] = (a0, a1, a2, a3, a4, a5) =>
       (dynCall_iddiii = Module["dynCall_iddiii"] = wasmExports["Ef"])(
@@ -9396,7 +9450,7 @@ var getUsdModule = ((args) => {
         a2,
         a3,
         a4,
-        a5,
+        a5
       ));
     var dynCall_iddii = (Module["dynCall_iddii"] = (a0, a1, a2, a3, a4) =>
       (dynCall_iddii = Module["dynCall_iddii"] = wasmExports["Ff"])(
@@ -9404,7 +9458,7 @@ var getUsdModule = ((args) => {
         a1,
         a2,
         a3,
-        a4,
+        a4
       ));
     var dynCall_idddiii = (Module["dynCall_idddiii"] = (
       a0,
@@ -9413,7 +9467,7 @@ var getUsdModule = ((args) => {
       a3,
       a4,
       a5,
-      a6,
+      a6
     ) =>
       (dynCall_idddiii = Module["dynCall_idddiii"] = wasmExports["Gf"])(
         a0,
@@ -9422,7 +9476,7 @@ var getUsdModule = ((args) => {
         a3,
         a4,
         a5,
-        a6,
+        a6
       ));
     var dynCall_idddii = (Module["dynCall_idddii"] = (a0, a1, a2, a3, a4, a5) =>
       (dynCall_idddii = Module["dynCall_idddii"] = wasmExports["Hf"])(
@@ -9431,14 +9485,14 @@ var getUsdModule = ((args) => {
         a2,
         a3,
         a4,
-        a5,
+        a5
       ));
     var dynCall_idii = (Module["dynCall_idii"] = (a0, a1, a2, a3) =>
       (dynCall_idii = Module["dynCall_idii"] = wasmExports["If"])(
         a0,
         a1,
         a2,
-        a3,
+        a3
       ));
     var dynCall_idi = (Module["dynCall_idi"] = (a0, a1, a2) =>
       (dynCall_idi = Module["dynCall_idi"] = wasmExports["Jf"])(a0, a1, a2));
@@ -9448,14 +9502,14 @@ var getUsdModule = ((args) => {
         a1,
         a2,
         a3,
-        a4,
+        a4
       ));
     var dynCall_iidi = (Module["dynCall_iidi"] = (a0, a1, a2, a3) =>
       (dynCall_iidi = Module["dynCall_iidi"] = wasmExports["Lf"])(
         a0,
         a1,
         a2,
-        a3,
+        a3
       ));
     var dynCall_iiiidii = (Module["dynCall_iiiidii"] = (
       a0,
@@ -9464,7 +9518,7 @@ var getUsdModule = ((args) => {
       a3,
       a4,
       a5,
-      a6,
+      a6
     ) =>
       (dynCall_iiiidii = Module["dynCall_iiiidii"] = wasmExports["Mf"])(
         a0,
@@ -9473,7 +9527,7 @@ var getUsdModule = ((args) => {
         a3,
         a4,
         a5,
-        a6,
+        a6
       ));
     var dynCall_iiiidiiiiii = (Module["dynCall_iiiidiiiiii"] = (
       a0,
@@ -9486,7 +9540,7 @@ var getUsdModule = ((args) => {
       a7,
       a8,
       a9,
-      a10,
+      a10
     ) =>
       (dynCall_iiiidiiiiii = Module["dynCall_iiiidiiiiii"] = wasmExports["Nf"])(
         a0,
@@ -9499,7 +9553,7 @@ var getUsdModule = ((args) => {
         a7,
         a8,
         a9,
-        a10,
+        a10
       ));
     var dynCall_iiidiiiii = (Module["dynCall_iiidiiiii"] = (
       a0,
@@ -9510,7 +9564,7 @@ var getUsdModule = ((args) => {
       a5,
       a6,
       a7,
-      a8,
+      a8
     ) =>
       (dynCall_iiidiiiii = Module["dynCall_iiidiiiii"] = wasmExports["Of"])(
         a0,
@@ -9521,7 +9575,7 @@ var getUsdModule = ((args) => {
         a5,
         a6,
         a7,
-        a8,
+        a8
       ));
     var dynCall_iiidiiidiiiidiif = (Module["dynCall_iiidiiidiiiidiif"] = (
       a0,
@@ -9539,7 +9593,7 @@ var getUsdModule = ((args) => {
       a12,
       a13,
       a14,
-      a15,
+      a15
     ) =>
       (dynCall_iiidiiidiiiidiif = Module["dynCall_iiidiiidiiiidiif"] =
         wasmExports["Pf"])(
@@ -9558,14 +9612,14 @@ var getUsdModule = ((args) => {
         a12,
         a13,
         a14,
-        a15,
+        a15
       ));
     var dynCall_dddd = (Module["dynCall_dddd"] = (a0, a1, a2, a3) =>
       (dynCall_dddd = Module["dynCall_dddd"] = wasmExports["Qf"])(
         a0,
         a1,
         a2,
-        a3,
+        a3
       ));
     var dynCall_iidiiii = (Module["dynCall_iidiiii"] = (
       a0,
@@ -9574,7 +9628,7 @@ var getUsdModule = ((args) => {
       a3,
       a4,
       a5,
-      a6,
+      a6
     ) =>
       (dynCall_iidiiii = Module["dynCall_iidiiii"] = wasmExports["Rf"])(
         a0,
@@ -9583,7 +9637,7 @@ var getUsdModule = ((args) => {
         a3,
         a4,
         a5,
-        a6,
+        a6
       ));
     var dynCall_iiiddii = (Module["dynCall_iiiddii"] = (
       a0,
@@ -9592,7 +9646,7 @@ var getUsdModule = ((args) => {
       a3,
       a4,
       a5,
-      a6,
+      a6
     ) =>
       (dynCall_iiiddii = Module["dynCall_iiiddii"] = wasmExports["Sf"])(
         a0,
@@ -9601,7 +9655,7 @@ var getUsdModule = ((args) => {
         a3,
         a4,
         a5,
-        a6,
+        a6
       ));
     var dynCall_iiiiiiiidi = (Module["dynCall_iiiiiiiidi"] = (
       a0,
@@ -9613,7 +9667,7 @@ var getUsdModule = ((args) => {
       a6,
       a7,
       a8,
-      a9,
+      a9
     ) =>
       (dynCall_iiiiiiiidi = Module["dynCall_iiiiiiiidi"] = wasmExports["Tf"])(
         a0,
@@ -9625,7 +9679,7 @@ var getUsdModule = ((args) => {
         a6,
         a7,
         a8,
-        a9,
+        a9
       ));
     var dynCall_iiiddi = (Module["dynCall_iiiddi"] = (a0, a1, a2, a3, a4, a5) =>
       (dynCall_iiiddi = Module["dynCall_iiiddi"] = wasmExports["Uf"])(
@@ -9634,7 +9688,7 @@ var getUsdModule = ((args) => {
         a2,
         a3,
         a4,
-        a5,
+        a5
       ));
     var dynCall_iiidd = (Module["dynCall_iiidd"] = (a0, a1, a2, a3, a4) =>
       (dynCall_iiidd = Module["dynCall_iiidd"] = wasmExports["Vf"])(
@@ -9642,7 +9696,7 @@ var getUsdModule = ((args) => {
         a1,
         a2,
         a3,
-        a4,
+        a4
       ));
     var dynCall_iiiif = (Module["dynCall_iiiif"] = (a0, a1, a2, a3, a4) =>
       (dynCall_iiiif = Module["dynCall_iiiif"] = wasmExports["Wf"])(
@@ -9650,7 +9704,7 @@ var getUsdModule = ((args) => {
         a1,
         a2,
         a3,
-        a4,
+        a4
       ));
     var dynCall_fi = (Module["dynCall_fi"] = (a0, a1) =>
       (dynCall_fi = Module["dynCall_fi"] = wasmExports["Xf"])(a0, a1));
@@ -9663,7 +9717,7 @@ var getUsdModule = ((args) => {
         a2,
         a3,
         a4,
-        a5,
+        a5
       ));
     var dynCall_iiidddii = (Module["dynCall_iiidddii"] = (
       a0,
@@ -9673,7 +9727,7 @@ var getUsdModule = ((args) => {
       a4,
       a5,
       a6,
-      a7,
+      a7
     ) =>
       (dynCall_iiidddii = Module["dynCall_iiidddii"] = wasmExports["_f"])(
         a0,
@@ -9683,7 +9737,7 @@ var getUsdModule = ((args) => {
         a4,
         a5,
         a6,
-        a7,
+        a7
       ));
     var dynCall_didii = (Module["dynCall_didii"] = (a0, a1, a2, a3, a4) =>
       (dynCall_didii = Module["dynCall_didii"] = wasmExports["$f"])(
@@ -9691,7 +9745,7 @@ var getUsdModule = ((args) => {
         a1,
         a2,
         a3,
-        a4,
+        a4
       ));
     var dynCall_iiiiiiidddi = (Module["dynCall_iiiiiiidddi"] = (
       a0,
@@ -9704,7 +9758,7 @@ var getUsdModule = ((args) => {
       a7,
       a8,
       a9,
-      a10,
+      a10
     ) =>
       (dynCall_iiiiiiidddi = Module["dynCall_iiiiiiidddi"] = wasmExports["ag"])(
         a0,
@@ -9717,14 +9771,14 @@ var getUsdModule = ((args) => {
         a7,
         a8,
         a9,
-        a10,
+        a10
       ));
     var dynCall_iidd = (Module["dynCall_iidd"] = (a0, a1, a2, a3) =>
       (dynCall_iidd = Module["dynCall_iidd"] = wasmExports["bg"])(
         a0,
         a1,
         a2,
-        a3,
+        a3
       ));
     var dynCall_viij = (Module["dynCall_viij"] = (a0, a1, a2, a3, a4) =>
       (dynCall_viij = Module["dynCall_viij"] = wasmExports["cg"])(
@@ -9732,7 +9786,7 @@ var getUsdModule = ((args) => {
         a1,
         a2,
         a3,
-        a4,
+        a4
       ));
     var dynCall_viji = (Module["dynCall_viji"] = (a0, a1, a2, a3, a4) =>
       (dynCall_viji = Module["dynCall_viji"] = wasmExports["dg"])(
@@ -9740,7 +9794,7 @@ var getUsdModule = ((args) => {
         a1,
         a2,
         a3,
-        a4,
+        a4
       ));
     var dynCall_vijii = (Module["dynCall_vijii"] = (a0, a1, a2, a3, a4, a5) =>
       (dynCall_vijii = Module["dynCall_vijii"] = wasmExports["eg"])(
@@ -9749,7 +9803,7 @@ var getUsdModule = ((args) => {
         a2,
         a3,
         a4,
-        a5,
+        a5
       ));
     var dynCall_iiijj = (Module["dynCall_iiijj"] = (
       a0,
@@ -9758,7 +9812,7 @@ var getUsdModule = ((args) => {
       a3,
       a4,
       a5,
-      a6,
+      a6
     ) =>
       (dynCall_iiijj = Module["dynCall_iiijj"] = wasmExports["fg"])(
         a0,
@@ -9767,7 +9821,7 @@ var getUsdModule = ((args) => {
         a3,
         a4,
         a5,
-        a6,
+        a6
       ));
     var dynCall_iiijji = (Module["dynCall_iiijji"] = (
       a0,
@@ -9777,7 +9831,7 @@ var getUsdModule = ((args) => {
       a4,
       a5,
       a6,
-      a7,
+      a7
     ) =>
       (dynCall_iiijji = Module["dynCall_iiijji"] = wasmExports["gg"])(
         a0,
@@ -9787,14 +9841,14 @@ var getUsdModule = ((args) => {
         a4,
         a5,
         a6,
-        a7,
+        a7
       ));
     var dynCall_vij = (Module["dynCall_vij"] = (a0, a1, a2, a3) =>
       (dynCall_vij = Module["dynCall_vij"] = wasmExports["hg"])(
         a0,
         a1,
         a2,
-        a3,
+        a3
       ));
     var dynCall_vijji = (Module["dynCall_vijji"] = (
       a0,
@@ -9803,7 +9857,7 @@ var getUsdModule = ((args) => {
       a3,
       a4,
       a5,
-      a6,
+      a6
     ) =>
       (dynCall_vijji = Module["dynCall_vijji"] = wasmExports["ig"])(
         a0,
@@ -9812,7 +9866,7 @@ var getUsdModule = ((args) => {
         a3,
         a4,
         a5,
-        a6,
+        a6
       ));
     var dynCall_viiji = (Module["dynCall_viiji"] = (a0, a1, a2, a3, a4, a5) =>
       (dynCall_viiji = Module["dynCall_viiji"] = wasmExports["jg"])(
@@ -9821,14 +9875,14 @@ var getUsdModule = ((args) => {
         a2,
         a3,
         a4,
-        a5,
+        a5
       ));
     var dynCall_jiii = (Module["dynCall_jiii"] = (a0, a1, a2, a3) =>
       (dynCall_jiii = Module["dynCall_jiii"] = wasmExports["kg"])(
         a0,
         a1,
         a2,
-        a3,
+        a3
       ));
     var dynCall_iiiiddd = (Module["dynCall_iiiiddd"] = (
       a0,
@@ -9837,7 +9891,7 @@ var getUsdModule = ((args) => {
       a3,
       a4,
       a5,
-      a6,
+      a6
     ) =>
       (dynCall_iiiiddd = Module["dynCall_iiiiddd"] = wasmExports["lg"])(
         a0,
@@ -9846,7 +9900,7 @@ var getUsdModule = ((args) => {
         a3,
         a4,
         a5,
-        a6,
+        a6
       ));
     var dynCall_vidii = (Module["dynCall_vidii"] = (a0, a1, a2, a3, a4) =>
       (dynCall_vidii = Module["dynCall_vidii"] = wasmExports["mg"])(
@@ -9854,7 +9908,7 @@ var getUsdModule = ((args) => {
         a1,
         a2,
         a3,
-        a4,
+        a4
       ));
     var dynCall_vidiiii = (Module["dynCall_vidiiii"] = (
       a0,
@@ -9863,7 +9917,7 @@ var getUsdModule = ((args) => {
       a3,
       a4,
       a5,
-      a6,
+      a6
     ) =>
       (dynCall_vidiiii = Module["dynCall_vidiiii"] = wasmExports["ng"])(
         a0,
@@ -9872,7 +9926,7 @@ var getUsdModule = ((args) => {
         a3,
         a4,
         a5,
-        a6,
+        a6
       ));
     var dynCall_vidiii = (Module["dynCall_vidiii"] = (a0, a1, a2, a3, a4, a5) =>
       (dynCall_vidiii = Module["dynCall_vidiii"] = wasmExports["og"])(
@@ -9881,7 +9935,7 @@ var getUsdModule = ((args) => {
         a2,
         a3,
         a4,
-        a5,
+        a5
       ));
     var dynCall_dj = (Module["dynCall_dj"] = (a0, a1, a2) =>
       (dynCall_dj = Module["dynCall_dj"] = wasmExports["pg"])(a0, a1, a2));
@@ -9891,7 +9945,7 @@ var getUsdModule = ((args) => {
         a1,
         a2,
         a3,
-        a4,
+        a4
       ));
     var dynCall_idiiiiii = (Module["dynCall_idiiiiii"] = (
       a0,
@@ -9901,7 +9955,7 @@ var getUsdModule = ((args) => {
       a4,
       a5,
       a6,
-      a7,
+      a7
     ) =>
       (dynCall_idiiiiii = Module["dynCall_idiiiiii"] = wasmExports["rg"])(
         a0,
@@ -9911,7 +9965,7 @@ var getUsdModule = ((args) => {
         a4,
         a5,
         a6,
-        a7,
+        a7
       ));
     var dynCall_idiiiiiii = (Module["dynCall_idiiiiiii"] = (
       a0,
@@ -9922,7 +9976,7 @@ var getUsdModule = ((args) => {
       a5,
       a6,
       a7,
-      a8,
+      a8
     ) =>
       (dynCall_idiiiiiii = Module["dynCall_idiiiiiii"] = wasmExports["sg"])(
         a0,
@@ -9933,7 +9987,7 @@ var getUsdModule = ((args) => {
         a5,
         a6,
         a7,
-        a8,
+        a8
       ));
     var dynCall_iiiidiiii = (Module["dynCall_iiiidiiii"] = (
       a0,
@@ -9944,7 +9998,7 @@ var getUsdModule = ((args) => {
       a5,
       a6,
       a7,
-      a8,
+      a8
     ) =>
       (dynCall_iiiidiiii = Module["dynCall_iiiidiiii"] = wasmExports["tg"])(
         a0,
@@ -9955,7 +10009,7 @@ var getUsdModule = ((args) => {
         a5,
         a6,
         a7,
-        a8,
+        a8
       ));
     var dynCall_viiiidiiiiii = (Module["dynCall_viiiidiiiiii"] = (
       a0,
@@ -9969,7 +10023,7 @@ var getUsdModule = ((args) => {
       a8,
       a9,
       a10,
-      a11,
+      a11
     ) =>
       (dynCall_viiiidiiiiii = Module["dynCall_viiiidiiiiii"] =
         wasmExports["ug"])(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11));
@@ -9979,7 +10033,7 @@ var getUsdModule = ((args) => {
         a1,
         a2,
         a3,
-        a4,
+        a4
       ));
     var dynCall_viiiiiiiiiii = (Module["dynCall_viiiiiiiiiii"] = (
       a0,
@@ -9993,7 +10047,7 @@ var getUsdModule = ((args) => {
       a8,
       a9,
       a10,
-      a11,
+      a11
     ) =>
       (dynCall_viiiiiiiiiii = Module["dynCall_viiiiiiiiiii"] =
         wasmExports["wg"])(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11));
@@ -10002,14 +10056,14 @@ var getUsdModule = ((args) => {
         a0,
         a1,
         a2,
-        a3,
+        a3
       ));
     var dynCall_vidi = (Module["dynCall_vidi"] = (a0, a1, a2, a3) =>
       (dynCall_vidi = Module["dynCall_vidi"] = wasmExports["yg"])(
         a0,
         a1,
         a2,
-        a3,
+        a3
       ));
     var dynCall_fii = (Module["dynCall_fii"] = (a0, a1, a2) =>
       (dynCall_fii = Module["dynCall_fii"] = wasmExports["zg"])(a0, a1, a2));
@@ -10027,7 +10081,7 @@ var getUsdModule = ((args) => {
       a10,
       a11,
       a12,
-      a13,
+      a13
     ) =>
       (dynCall_viiiiiiiiiiiii = Module["dynCall_viiiiiiiiiiiii"] =
         wasmExports["Ag"])(
@@ -10044,7 +10098,7 @@ var getUsdModule = ((args) => {
         a10,
         a11,
         a12,
-        a13,
+        a13
       ));
     var dynCall_iiiiiiiiiii = (Module["dynCall_iiiiiiiiiii"] = (
       a0,
@@ -10057,7 +10111,7 @@ var getUsdModule = ((args) => {
       a7,
       a8,
       a9,
-      a10,
+      a10
     ) =>
       (dynCall_iiiiiiiiiii = Module["dynCall_iiiiiiiiiii"] = wasmExports["Bg"])(
         a0,
@@ -10070,7 +10124,7 @@ var getUsdModule = ((args) => {
         a7,
         a8,
         a9,
-        a10,
+        a10
       ));
     var dynCall_viidii = (Module["dynCall_viidii"] = (a0, a1, a2, a3, a4, a5) =>
       (dynCall_viidii = Module["dynCall_viidii"] = wasmExports["Cg"])(
@@ -10079,7 +10133,7 @@ var getUsdModule = ((args) => {
         a2,
         a3,
         a4,
-        a5,
+        a5
       ));
     var dynCall_viiiijii = (Module["dynCall_viiiijii"] = (
       a0,
@@ -10090,7 +10144,7 @@ var getUsdModule = ((args) => {
       a5,
       a6,
       a7,
-      a8,
+      a8
     ) =>
       (dynCall_viiiijii = Module["dynCall_viiiijii"] = wasmExports["Dg"])(
         a0,
@@ -10101,7 +10155,7 @@ var getUsdModule = ((args) => {
         a5,
         a6,
         a7,
-        a8,
+        a8
       ));
     var dynCall_viiijjii = (Module["dynCall_viiijjii"] = (
       a0,
@@ -10113,7 +10167,7 @@ var getUsdModule = ((args) => {
       a6,
       a7,
       a8,
-      a9,
+      a9
     ) =>
       (dynCall_viiijjii = Module["dynCall_viiijjii"] = wasmExports["Eg"])(
         a0,
@@ -10125,7 +10179,7 @@ var getUsdModule = ((args) => {
         a6,
         a7,
         a8,
-        a9,
+        a9
       ));
     var dynCall_iiiijjii = (Module["dynCall_iiiijjii"] = (
       a0,
@@ -10137,7 +10191,7 @@ var getUsdModule = ((args) => {
       a6,
       a7,
       a8,
-      a9,
+      a9
     ) =>
       (dynCall_iiiijjii = Module["dynCall_iiiijjii"] = wasmExports["Fg"])(
         a0,
@@ -10149,7 +10203,7 @@ var getUsdModule = ((args) => {
         a6,
         a7,
         a8,
-        a9,
+        a9
       ));
     var dynCall_viiijii = (Module["dynCall_viiijii"] = (
       a0,
@@ -10159,7 +10213,7 @@ var getUsdModule = ((args) => {
       a4,
       a5,
       a6,
-      a7,
+      a7
     ) =>
       (dynCall_viiijii = Module["dynCall_viiijii"] = wasmExports["Gg"])(
         a0,
@@ -10169,7 +10223,7 @@ var getUsdModule = ((args) => {
         a4,
         a5,
         a6,
-        a7,
+        a7
       ));
     var dynCall_iiiijii = (Module["dynCall_iiiijii"] = (
       a0,
@@ -10179,7 +10233,7 @@ var getUsdModule = ((args) => {
       a4,
       a5,
       a6,
-      a7,
+      a7
     ) =>
       (dynCall_iiiijii = Module["dynCall_iiiijii"] = wasmExports["Hg"])(
         a0,
@@ -10189,7 +10243,7 @@ var getUsdModule = ((args) => {
         a4,
         a5,
         a6,
-        a7,
+        a7
       ));
     var dynCall_ddiiiii = (Module["dynCall_ddiiiii"] = (
       a0,
@@ -10198,7 +10252,7 @@ var getUsdModule = ((args) => {
       a3,
       a4,
       a5,
-      a6,
+      a6
     ) =>
       (dynCall_ddiiiii = Module["dynCall_ddiiiii"] = wasmExports["Ig"])(
         a0,
@@ -10207,14 +10261,14 @@ var getUsdModule = ((args) => {
         a3,
         a4,
         a5,
-        a6,
+        a6
       ));
     var dynCall_iifi = (Module["dynCall_iifi"] = (a0, a1, a2, a3) =>
       (dynCall_iifi = Module["dynCall_iifi"] = wasmExports["Jg"])(
         a0,
         a1,
         a2,
-        a3,
+        a3
       ));
     var dynCall_iiiij = (Module["dynCall_iiiij"] = (a0, a1, a2, a3, a4, a5) =>
       (dynCall_iiiij = Module["dynCall_iiiij"] = wasmExports["Kg"])(
@@ -10223,7 +10277,7 @@ var getUsdModule = ((args) => {
         a2,
         a3,
         a4,
-        a5,
+        a5
       ));
     var dynCall_jiji = (Module["dynCall_jiji"] = (a0, a1, a2, a3, a4) =>
       (dynCall_jiji = Module["dynCall_jiji"] = wasmExports["Lg"])(
@@ -10231,7 +10285,7 @@ var getUsdModule = ((args) => {
         a1,
         a2,
         a3,
-        a4,
+        a4
       ));
     var dynCall_iiiiij = (Module["dynCall_iiiiij"] = (
       a0,
@@ -10240,7 +10294,7 @@ var getUsdModule = ((args) => {
       a3,
       a4,
       a5,
-      a6,
+      a6
     ) =>
       (dynCall_iiiiij = Module["dynCall_iiiiij"] = wasmExports["Mg"])(
         a0,
@@ -10249,7 +10303,7 @@ var getUsdModule = ((args) => {
         a3,
         a4,
         a5,
-        a6,
+        a6
       ));
     var dynCall_viijii = (Module["dynCall_viijii"] = (
       a0,
@@ -10258,7 +10312,7 @@ var getUsdModule = ((args) => {
       a3,
       a4,
       a5,
-      a6,
+      a6
     ) =>
       (dynCall_viijii = Module["dynCall_viijii"] = wasmExports["Ng"])(
         a0,
@@ -10267,7 +10321,7 @@ var getUsdModule = ((args) => {
         a3,
         a4,
         a5,
-        a6,
+        a6
       ));
     var dynCall_jiiii = (Module["dynCall_jiiii"] = (a0, a1, a2, a3, a4) =>
       (dynCall_jiiii = Module["dynCall_jiiii"] = wasmExports["Og"])(
@@ -10275,7 +10329,7 @@ var getUsdModule = ((args) => {
         a1,
         a2,
         a3,
-        a4,
+        a4
       ));
     var dynCall_viiiiiiiiiiiiiii = (Module["dynCall_viiiiiiiiiiiiiii"] = (
       a0,
@@ -10293,7 +10347,7 @@ var getUsdModule = ((args) => {
       a12,
       a13,
       a14,
-      a15,
+      a15
     ) =>
       (dynCall_viiiiiiiiiiiiiii = Module["dynCall_viiiiiiiiiiiiiii"] =
         wasmExports["Pg"])(
@@ -10312,7 +10366,7 @@ var getUsdModule = ((args) => {
         a12,
         a13,
         a14,
-        a15,
+        a15
       ));
     var dynCall_iiiiijj = (Module["dynCall_iiiiijj"] = (
       a0,
@@ -10323,7 +10377,7 @@ var getUsdModule = ((args) => {
       a5,
       a6,
       a7,
-      a8,
+      a8
     ) =>
       (dynCall_iiiiijj = Module["dynCall_iiiiijj"] = wasmExports["Qg"])(
         a0,
@@ -10334,7 +10388,7 @@ var getUsdModule = ((args) => {
         a5,
         a6,
         a7,
-        a8,
+        a8
       ));
     var dynCall_iiiiiijj = (Module["dynCall_iiiiiijj"] = (
       a0,
@@ -10346,7 +10400,7 @@ var getUsdModule = ((args) => {
       a6,
       a7,
       a8,
-      a9,
+      a9
     ) =>
       (dynCall_iiiiiijj = Module["dynCall_iiiiiijj"] = wasmExports["Rg"])(
         a0,
@@ -10358,7 +10412,7 @@ var getUsdModule = ((args) => {
         a6,
         a7,
         a8,
-        a9,
+        a9
       ));
     var _asyncify_start_unwind = (a0) =>
       (_asyncify_start_unwind = wasmExports["Sg"])(a0);
@@ -10652,7 +10706,7 @@ var getUsdModule = ((args) => {
       a8,
       a9,
       a10,
-      a11,
+      a11
     ) {
       var sp = stackSave();
       try {
@@ -10668,7 +10722,7 @@ var getUsdModule = ((args) => {
           a8,
           a9,
           a10,
-          a11,
+          a11
         );
       } catch (e) {
         stackRestore(sp);
@@ -11009,7 +11063,7 @@ var getUsdModule = ((args) => {
       a9,
       a10,
       a11,
-      a12,
+      a12
     ) {
       var sp = stackSave();
       try {
@@ -11026,7 +11080,7 @@ var getUsdModule = ((args) => {
           a9,
           a10,
           a11,
-          a12,
+          a12
         );
       } catch (e) {
         stackRestore(sp);
@@ -11090,7 +11144,7 @@ var getUsdModule = ((args) => {
       a12,
       a13,
       a14,
-      a15,
+      a15
     ) {
       var sp = stackSave();
       try {
@@ -11110,7 +11164,7 @@ var getUsdModule = ((args) => {
           a12,
           a13,
           a14,
-          a15,
+          a15
         );
       } catch (e) {
         stackRestore(sp);
@@ -11129,7 +11183,7 @@ var getUsdModule = ((args) => {
       a7,
       a8,
       a9,
-      a10,
+      a10
     ) {
       var sp = stackSave();
       try {
@@ -11190,7 +11244,7 @@ var getUsdModule = ((args) => {
       a16,
       a17,
       a18,
-      a19,
+      a19
     ) {
       var sp = stackSave();
       try {
@@ -11214,7 +11268,7 @@ var getUsdModule = ((args) => {
           a16,
           a17,
           a18,
-          a19,
+          a19
         );
       } catch (e) {
         stackRestore(sp);
@@ -11235,7 +11289,7 @@ var getUsdModule = ((args) => {
       a9,
       a10,
       a11,
-      a12,
+      a12
     ) {
       var sp = stackSave();
       try {
@@ -11252,7 +11306,7 @@ var getUsdModule = ((args) => {
           a9,
           a10,
           a11,
-          a12,
+          a12
         );
       } catch (e) {
         stackRestore(sp);
@@ -11274,7 +11328,7 @@ var getUsdModule = ((args) => {
       a10,
       a11,
       a12,
-      a13,
+      a13
     ) {
       var sp = stackSave();
       try {
@@ -11292,7 +11346,7 @@ var getUsdModule = ((args) => {
           a10,
           a11,
           a12,
-          a13,
+          a13
         );
       } catch (e) {
         stackRestore(sp);
@@ -11312,7 +11366,7 @@ var getUsdModule = ((args) => {
       a8,
       a9,
       a10,
-      a11,
+      a11
     ) {
       var sp = stackSave();
       try {
@@ -11328,7 +11382,7 @@ var getUsdModule = ((args) => {
           a8,
           a9,
           a10,
-          a11,
+          a11
         );
       } catch (e) {
         stackRestore(sp);
@@ -11437,7 +11491,7 @@ var getUsdModule = ((args) => {
       a7,
       a8,
       a9,
-      a10,
+      a10
     ) {
       var sp = stackSave();
       try {
@@ -11452,7 +11506,7 @@ var getUsdModule = ((args) => {
           a7,
           a8,
           a9,
-          a10,
+          a10
         );
       } catch (e) {
         stackRestore(sp);
@@ -11506,7 +11560,7 @@ var getUsdModule = ((args) => {
       a12,
       a13,
       a14,
-      a15,
+      a15
     ) {
       var sp = stackSave();
       try {
@@ -11526,7 +11580,7 @@ var getUsdModule = ((args) => {
           a12,
           a13,
           a14,
-          a15,
+          a15
         );
       } catch (e) {
         stackRestore(sp);
@@ -11635,7 +11689,7 @@ var getUsdModule = ((args) => {
       a7,
       a8,
       a9,
-      a10,
+      a10
     ) {
       var sp = stackSave();
       try {
@@ -11650,7 +11704,7 @@ var getUsdModule = ((args) => {
           a7,
           a8,
           a9,
-          a10,
+          a10
         );
       } catch (e) {
         stackRestore(sp);
@@ -11760,7 +11814,7 @@ var getUsdModule = ((args) => {
       a8,
       a9,
       a10,
-      a11,
+      a11
     ) {
       var sp = stackSave();
       try {
@@ -11776,7 +11830,7 @@ var getUsdModule = ((args) => {
           a8,
           a9,
           a10,
-          a11,
+          a11
         );
       } catch (e) {
         stackRestore(sp);
@@ -11818,7 +11872,7 @@ var getUsdModule = ((args) => {
       a10,
       a11,
       a12,
-      a13,
+      a13
     ) {
       var sp = stackSave();
       try {
@@ -11836,7 +11890,7 @@ var getUsdModule = ((args) => {
           a10,
           a11,
           a12,
-          a13,
+          a13
         );
       } catch (e) {
         stackRestore(sp);
@@ -11855,7 +11909,7 @@ var getUsdModule = ((args) => {
       a7,
       a8,
       a9,
-      a10,
+      a10
     ) {
       var sp = stackSave();
       try {
@@ -11870,7 +11924,7 @@ var getUsdModule = ((args) => {
           a7,
           a8,
           a9,
-          a10,
+          a10
         );
       } catch (e) {
         stackRestore(sp);

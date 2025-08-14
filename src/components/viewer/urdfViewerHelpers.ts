@@ -74,7 +74,8 @@ export function createUrdfViewer(container: HTMLDivElement): URDFViewerElement {
  */
 export function setupMeshLoader(
   viewer: URDFViewerElement,
-  urlModifierFunc: ((url: string) => string) | null
+  urlModifierFunc: ((url: string) => string) | null,
+  textureMapping?: Record<string, string>
 ): void {
   if ("loadMeshFunc" in viewer) {
     viewer.loadMeshFunc = (
@@ -99,7 +100,7 @@ export function setupMeshLoader(
           } else {
             done(result);
           }
-        });
+        }, textureMapping);
       } catch (err) {
         console.error(`Exception loading mesh ${modifiedPath}:`, err);
         done(null, err as Error);

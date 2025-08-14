@@ -5,6 +5,12 @@ export interface MjcfAsset {
   class?: string;
 }
 
+export interface MjcfTexture {
+  name: string;
+  file: string;
+  type?: string;
+}
+
 export interface MjcfBody {
   name: string;
   pos?: string | undefined;
@@ -46,14 +52,22 @@ export interface MjcfInertial {
   fullinertia?: string | undefined;
 }
 
+export interface MjcfConnect {
+  body1: string;
+  body2: string;
+  anchor: string;
+}
+
 export interface MjcfModel {
   name: string;
   meshdir: string;
   texturedir: string;
   assets: Record<string, MjcfAsset>;
+  textures: Record<string, MjcfTexture>;
   materials: Record<string, any>;
   worldbody: MjcfBody;
   angleUnit: 'degree' | 'radian';
+  equalityConstraints: MjcfConnect[];
 }
 
 /**
@@ -62,8 +76,10 @@ export interface MjcfModel {
 export class MjcfToUrdfConverter {
   private parser: DOMParser;
   private meshAssets: Record<string, MjcfAsset> = {};
+  private textureAssets: Record<string, MjcfTexture> = {};
   private materials: Record<string, any> = {};
   private meshdir: string = "";
+  private texturedir: string = "";
   private basePath: string = "";
   private currentModel?: MjcfModel;
   private defaultClasses: Record<string, any> = {};
@@ -85,7 +101,17 @@ export class MjcfToUrdfConverter {
    * Convert MJCF XML content to URDF XML
    */
   convert(mjcfXml: string): string {
+        // Note: MJCF equality constraints (connect elements) create closed kinematic loops
+    // which are not directly supported in URDF's tree structure
+    
     const doc = this.parser.parseFromString(mjcfXml, 'text/xml');
+    
+    // Check for XML parsing errors
+    const parserError = doc.querySelector('parsererror');
+    if (parserError) {
+      console.error('❌ XML Parser Error:', parserError.textContent);
+    }
+    
     const mjcfElement = doc.querySelector('mujoco');
     
     if (!mjcfElement) {
@@ -109,7 +135,8 @@ export class MjcfToUrdfConverter {
     // Parse compiler settings
     const compiler = mjcfElement.querySelector('compiler');
     this.meshdir = compiler?.getAttribute('meshdir') || 'meshes';
-    const texturedir = compiler?.getAttribute('texturedir') || 'textures';
+    this.texturedir = compiler?.getAttribute('texturedir') || 'textures';
+    const texturedir = this.texturedir;
     
     // Parse angle unit (radian or degree)
     const angleUnit = compiler?.getAttribute('angle') === 'radian' ? 'radian' : 'degree';
@@ -119,6 +146,9 @@ export class MjcfToUrdfConverter {
 
     // Parse materials
     this.parseMaterials(mjcfElement);
+
+    // Parse equality constraints (currently disabled - see note below)
+    const equalityConstraints = this.parseEqualityConstraints(mjcfElement);
 
     // Parse worldbody
     const worldbody = mjcfElement.querySelector('worldbody');
@@ -133,9 +163,11 @@ export class MjcfToUrdfConverter {
       meshdir: this.meshdir,
       texturedir,
       assets: this.meshAssets,
+      textures: this.textureAssets,
       materials: this.materials,
       worldbody: rootBody,
-      angleUnit
+      angleUnit,
+      equalityConstraints
     };
   }
 
@@ -148,6 +180,18 @@ export class MjcfToUrdfConverter {
 
     // First, parse default classes to get class-based properties
     this.defaultClasses = this.parseDefaultClasses(mjcfElement);
+
+    // Parse texture assets
+    const textureElements = assetElement.querySelectorAll('texture');
+    textureElements.forEach(textureEl => {
+      const name = textureEl.getAttribute('name');
+      const file = textureEl.getAttribute('file');
+      const type = textureEl.getAttribute('type') || undefined;
+      
+      if (name && file) {
+        this.textureAssets[name] = { name, file, type };
+      }
+    });
 
     // Parse mesh assets
     const meshElements = assetElement.querySelectorAll('mesh');
@@ -230,13 +274,53 @@ export class MjcfToUrdfConverter {
     materialElements.forEach(matEl => {
       const name = matEl.getAttribute('name');
       if (name) {
+        const textureName = matEl.getAttribute('texture');
+        let textureAsset: MjcfTexture | undefined;
+        
+        // Resolve texture reference to actual texture asset
+        if (textureName && this.textureAssets[textureName]) {
+          textureAsset = this.textureAssets[textureName];
+        }
+        
         this.materials[name] = {
           name,
-          texture: matEl.getAttribute('texture'),
+          texture: textureName,
+          textureAsset,
           rgba: matEl.getAttribute('rgba')
         };
       }
     });
+  }
+
+  /**
+   * Parse equality constraints (connect elements)
+   */
+  private parseEqualityConstraints(mjcfElement: Element): MjcfConnect[] {
+    const constraints: MjcfConnect[] = [];
+    
+    // Find equality element that is a direct child of mujoco root (not inside default)
+    let equalityElement: Element | null = null;
+    for (const child of mjcfElement.children) {
+      if (child.tagName === 'equality' && child.children.length > 0) {
+        equalityElement = child;
+        break;
+      }
+    }
+    
+    if (equalityElement) {
+      const connectElements = equalityElement.querySelectorAll('connect');
+      connectElements.forEach(connectEl => {
+        const body1 = connectEl.getAttribute('body1');
+        const body2 = connectEl.getAttribute('body2');
+        const anchor = connectEl.getAttribute('anchor');
+        
+        if (body1 && body2 && anchor) {
+          constraints.push({ body1, body2, anchor });
+        }
+      });
+    }
+    
+    return constraints;
   }
 
   /**
@@ -367,6 +451,12 @@ export class MjcfToUrdfConverter {
       this.generateJointsRecursive(model.worldbody, urdfLines, null);
     }
     
+    // Generate documentation for equality constraints
+    // NOTE: MJCF equality constraints create closed kinematic loops (e.g. achilles-rod <-> heel-spring)
+    // URDF's tree structure cannot represent these constraints without breaking parent-child relationships
+    // The constraints are documented as comments for reference
+    this.generateConstraintJoints(model, urdfLines);
+    
     urdfLines.push('</robot>');
     
     return urdfLines.join('\n');
@@ -444,9 +534,15 @@ export class MjcfToUrdfConverter {
           if (geom.material && this.materials[geom.material]) {
             const material = this.materials[geom.material];
             urdfLines.push('      <material name="' + geom.material + '">');
+            
+            // For URDF, only use color - textures are handled through MTL files for OBJ meshes
             if (material.rgba) {
               urdfLines.push(`        <color rgba="${material.rgba}"/>`);
+            } else {
+              // Default color if no color specified but material exists
+              urdfLines.push(`        <color rgba="0.8 0.8 0.8 1.0"/>`);
             }
+            
             urdfLines.push('      </material>');
           }
           
@@ -555,6 +651,27 @@ export class MjcfToUrdfConverter {
       // Recursively generate joints for children
       this.generateJointsRecursive(child, urdfLines, child.name);
     });
+  }
+
+  /**
+   * Generate joints for equality constraints
+   */
+  private generateConstraintJoints(model: MjcfModel, urdfLines: string[]): void {
+    if (model.equalityConstraints.length > 0) {
+      urdfLines.push(`  <!-- MJCF Equality Constraints (not converted to preserve URDF tree structure) -->`);
+      
+      model.equalityConstraints.forEach((constraint, index) => {
+        const anchor = constraint.anchor.split(' ').map(parseFloat);
+        const anchorXyz = anchor.length >= 3 ? `${anchor[0]} ${anchor[1]} ${anchor[2]}` : "0 0 0";
+        
+        urdfLines.push(`  <!-- Constraint ${index + 1}: ${constraint.body1} <-> ${constraint.body2} at anchor="${anchorXyz}" -->`);
+        urdfLines.push(`  <!--   Original MJCF: <connect body1="${constraint.body1}" body2="${constraint.body2}" anchor="${constraint.anchor}"/> -->`);
+        
+        console.log(`🔗 Documented constraint: ${constraint.body1} <-> ${constraint.body2} (preserved as comment)`);
+      });
+      
+      urdfLines.push(`  <!-- Note: These constraints create closed kinematic loops that cannot be represented in URDF's tree structure -->`);
+    }
   }
 
   /**
@@ -752,14 +869,17 @@ export class MjcfToUrdfConverter {
   }
 
   /**
-   * Create URL modifier function for MJCF mesh resolution
+   * Create URL modifier function for MJCF mesh and texture resolution
    */
   createUrlModifier(): (url: string) => string {
     const basePath = this.basePath;
     const meshdir = this.meshdir;
+    const texturedir = this.texturedir;
+    const materials = this.materials;
+    const textureAssets = this.textureAssets;
     
     return (url: string) => {
-      // Handle package:// URLs for MJCF meshes
+      // Handle package:// URLs for MJCF meshes and textures
       if (url.startsWith('package://mjcf/')) {
         // Extract the relative path after package://mjcf/packagename/
         const parts = url.replace('package://mjcf/', '').split('/');
@@ -778,5 +898,25 @@ export class MjcfToUrdfConverter {
       
       return url;
     };
+  }
+
+  /**
+   * Get texture information for material-based texture mapping
+   */
+  getTextureMapping(): Record<string, string> {
+    const textureMap: Record<string, string> = {};
+    
+    // Create mapping from material names to texture file paths
+    for (const materialName in this.materials) {
+      const material = this.materials[materialName];
+      if (material.textureAsset) {
+        const texturePath = `${this.basePath}/${this.texturedir}/${material.textureAsset.file}`;
+        textureMap[materialName] = texturePath;
+        console.log(`🎨 Texture mapping: ${materialName} -> ${texturePath}`);
+      }
+    }
+    
+    console.log(`🎨 Total texture mappings: ${Object.keys(textureMap).length}`);
+    return textureMap;
   }
 } 

@@ -149,8 +149,10 @@ const UrdfViewer: React.FC = () => {
             const blob = new Blob([urdfContent], { type: 'application/xml' });
             const blobUrl = URL.createObjectURL(blob) + '#.urdf';
             
-            // Setup mesh loader with MJCF URL modifier
-            setupMeshLoader(viewer, converter.createUrlModifier());
+            // Setup mesh loader with MJCF URL modifier and texture mapping
+            const urlModifier = converter.createUrlModifier();
+            const textureMapping = converter.getTextureMapping();
+            setupMeshLoader(viewer, urlModifier, textureMapping);
             
             // Load the converted URDF
             viewer.setAttribute('urdf', blobUrl);
@@ -160,14 +162,14 @@ const UrdfViewer: React.FC = () => {
           });
         } else {
           // Handle URDF files normally
-          const cleanupModelLoading = setupModelLoading(
-            viewer,
+        const cleanupModelLoading = setupModelLoading(
+          viewer,
             robotConfig.path,
-            packageRef.current,
-            setCustomUrdfPath,
-            alternativeRobotModels
-          );
-          cleanupFunctions.push(cleanupModelLoading);
+          packageRef.current,
+          setCustomUrdfPath,
+          alternativeRobotModels
+        );
+        cleanupFunctions.push(cleanupModelLoading);
         }
       }
 
@@ -285,8 +287,10 @@ const UrdfViewer: React.FC = () => {
               const blob = new Blob([urdfContent], { type: 'application/xml' });
               const blobUrl = URL.createObjectURL(blob) + '#.urdf';
               
-              // Setup mesh loader with MJCF URL modifier
-              setupMeshLoader(viewerRef.current, converter.createUrlModifier());
+              // Setup mesh loader with MJCF URL modifier and texture mapping
+              const urlModifier = converter.createUrlModifier();
+              const textureMapping = converter.getTextureMapping();
+              setupMeshLoader(viewerRef.current, urlModifier, textureMapping);
               
               // Load the converted URDF
               viewerRef.current.setAttribute("urdf", blobUrl);
@@ -306,11 +310,11 @@ const UrdfViewer: React.FC = () => {
           setupMeshLoader(viewerRef.current, urlModifierFunc);
 
           viewerRef.current.setAttribute("urdf", robotConfig.path);
-          viewerRef.current.setAttribute("package", packageRef.current);
+        viewerRef.current.setAttribute("package", packageRef.current);
 
-          // Force a redraw
-          if (viewerRef.current.redraw) {
-            viewerRef.current.redraw();
+        // Force a redraw
+        if (viewerRef.current.redraw) {
+          viewerRef.current.redraw();
           }
         }
       }

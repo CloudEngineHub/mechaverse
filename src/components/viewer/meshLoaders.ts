@@ -5,6 +5,8 @@ import {
   Color,
   Object3D,
   Group,
+  TextureLoader,
+  Texture,
 } from "three";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
@@ -16,11 +18,13 @@ import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
  * @param path The path to the mesh file
  * @param manager The THREE.js loading manager
  * @param done Callback function when loading is complete
+ * @param textureMapping Optional mapping from material names to texture paths
  */
 export const loadMeshFile = (
   path: string,
   manager: LoadingManager,
-  done: (result: Object3D | Group | Mesh | null, err?: Error) => void
+  done: (result: Object3D | Group | Mesh | null, err?: Error) => void,
+  textureMapping?: Record<string, string>
 ) => {
   // First try to get extension from the original path
   let ext = path.split(/\./g).pop()?.toLowerCase();
@@ -69,7 +73,13 @@ export const loadMeshFile = (
     case "obj":
       new OBJLoader(manager).load(
         path,
-        (result) => done(result),
+        (result) => {
+          // Apply textures if available
+          if (textureMapping && Object.keys(textureMapping).length > 0) {
+            applyTexturesToObject(result, textureMapping, manager);
+          }
+          done(result);
+        },
         undefined,
         (err) => done(null, err as Error)
       );
@@ -117,6 +127,58 @@ export const loadMeshFile = (
     default:
       done(null, new Error(`Unsupported file format: ${ext}`));
   }
+};
+
+/**
+ * Apply textures to all meshes in an object
+ * @param object The loaded 3D object
+ * @param textureMapping Mapping from material names to texture paths
+ * @param manager The loading manager
+ */
+const applyTexturesToObject = (
+  object: Object3D | Group,
+  textureMapping: Record<string, string>,
+  manager: LoadingManager
+): void => {
+  // Get the first available texture path
+  const textureFiles = Object.values(textureMapping);
+  if (textureFiles.length === 0) {
+    console.log('🎨 No textures available to apply');
+    return;
+  }
+  
+  const texturePath = textureFiles[0]; // Use the first available texture
+  console.log(`🎨 Applying texture: ${texturePath}`);
+  
+  // Load the texture
+  const textureLoader = new TextureLoader(manager);
+  
+  textureLoader.load(
+    texturePath,
+    (texture) => {
+      console.log(`🎨 Texture loaded successfully: ${texturePath}`);
+      let meshCount = 0;
+      
+      // Apply texture to all meshes in the object
+      object.traverse((child) => {
+        if (child instanceof Mesh) {
+          // Create a new material with the texture
+          const material = new MeshPhongMaterial({
+            map: texture,
+            transparent: true,
+          });
+          child.material = material;
+          meshCount++;
+        }
+      });
+      
+      console.log(`🎨 Applied texture to ${meshCount} meshes`);
+    },
+    undefined,
+    (err) => {
+      console.warn(`Failed to load texture ${texturePath}:`, err);
+    }
+  );
 };
 
 /**

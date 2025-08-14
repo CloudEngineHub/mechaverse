@@ -6,6 +6,7 @@ export class JointDragManager {
     this.renderer = renderer;
     this.camera = camera;
     this.simulation = simulation;
+    this.model = null; // Will be set when model is loaded
     this.mousePos = new THREE.Vector2();
     this.raycaster = new THREE.Raycaster();
     this.raycaster.params.Line.threshold = 0.1;
@@ -66,12 +67,37 @@ export class JointDragManager {
     this.currentWorld = new THREE.Vector3();
     this.originalJointPos = new THREE.Vector3();
 
-    // Event listeners
-    container.addEventListener("pointerdown", this.onPointer.bind(this), true);
-    document.addEventListener("pointermove", this.onPointer.bind(this), true);
-    document.addEventListener("pointerup", this.onPointer.bind(this), true);
-    document.addEventListener("pointerout", this.onPointer.bind(this), true);
-    container.addEventListener("dblclick", this.onPointer.bind(this), false);
+    // Event listeners - initially disabled until enabled
+    this.enabled = false;
+    this.container = container;
+    this.boundOnPointer = this.onPointer.bind(this);
+  }
+
+  enable() {
+    if (!this.enabled) {
+      this.enabled = true;
+      this.container.addEventListener("pointerdown", this.boundOnPointer, true);
+      document.addEventListener("pointermove", this.boundOnPointer, true);
+      document.addEventListener("pointerup", this.boundOnPointer, true);
+      document.addEventListener("pointerout", this.boundOnPointer, true);
+      this.container.addEventListener("dblclick", this.boundOnPointer, false);
+    }
+  }
+
+  disable() {
+    if (this.enabled) {
+      this.enabled = false;
+      this.container.removeEventListener("pointerdown", this.boundOnPointer, true);
+      document.removeEventListener("pointermove", this.boundOnPointer, true);
+      document.removeEventListener("pointerup", this.boundOnPointer, true);
+      document.removeEventListener("pointerout", this.boundOnPointer, true);
+      this.container.removeEventListener("dblclick", this.boundOnPointer, false);
+      
+      // End any active dragging
+      if (this.active) {
+        this.end();
+      }
+    }
   }
 
   updateRaycaster(x, y) {
@@ -123,6 +149,9 @@ export class JointDragManager {
         // Show joint info
         this.showJointInfo(obj.bodyID);
 
+        // Optional debug info for development
+        // console.log("Started joint drag for bodyID:", obj.bodyID);
+
         // Dragging joint started
         break;
       }
@@ -138,6 +167,9 @@ export class JointDragManager {
 
       this.update();
       this.updateJointPosition();
+      
+      // Update the reference point for next frame's delta calculation
+      this.worldHit.copy(this.currentWorld);
     }
   }
 
@@ -163,63 +195,147 @@ export class JointDragManager {
   }
 
   updateJointPosition() {
-    if (!this.draggedJoint || !this.simulation || !this.simulation.model)
+    if (!this.draggedJoint || !this.simulation || !this.model)
       return;
 
     const bodyID = this.draggedJoint.bodyID;
     if (bodyID === undefined || bodyID < 0) return;
 
-    // Use mocap body if available: attach this body to a mocap controller dynamically
-    // Strategy: move the subtree root via mocap and let MuJoCo enforce constraints.
-    // Find root body that has a free joint (for mocap-style movement). If none, fall back to position set.
-
-    const model = this.simulation.model;
-    const rootCandidate = model.body_rootid ? model.body_rootid[bodyID] : 0;
-
-    const targetPosition = this.currentWorld.clone();
-    const mujocoTarget = this.toMujocoPos(targetPosition);
-
     try {
-      // Apply pose to the body; when paused flag is 1, MuJoCo treats this as a perturbation target.
-      // We set orientation unchanged (identity delta), only position moved.
-      this.simulation.applyPose(
-        bodyID,
-        mujocoTarget.x,
-        mujocoTarget.y,
-        mujocoTarget.z,
-        1,
-        0,
-        0,
-        0,
-        1
-      );
+      // Find the joint that affects this body
+      const jointInfo = this.findBodyJoint(bodyID);
+      if (!jointInfo) {
+        return;
+      }
+
+      // Calculate joint angle change based on mouse movement (much simpler approach)
+      const angleChange = this.calculateSimpleAngleChange(jointInfo);
+      
+      // Apply the incremental change
+      this.applyJointAngleChange(jointInfo, angleChange);
+      
+      // Forward the simulation to apply changes
       this.simulation.forward();
+      
     } catch (e) {
-      // Fallback: directly update body position buffer (less physical but interactive)
-      this.setBodyPosition(bodyID, mujocoTarget);
+      console.warn("Failed to update joint position:", e);
+    }
+  }
+
+  findBodyJoint(bodyID) {
+    const model = this.model;
+    
+    // Look for joints that directly affect this body
+    for (let jntId = 0; jntId < model.njnt; jntId++) {
+      // Check if this joint's body matches our target body
+      if (model.jnt_bodyid && model.jnt_bodyid[jntId] === bodyID) {
+        return {
+          jointId: jntId,
+          bodyId: bodyID,
+          qposAddr: model.jnt_qposadr[jntId],
+          jointType: model.jnt_type[jntId], // 0=free, 1=ball, 2=slide, 3=hinge
+          axis: model.jnt_axis ? [
+            model.jnt_axis[jntId * 3 + 0],
+            model.jnt_axis[jntId * 3 + 1], 
+            model.jnt_axis[jntId * 3 + 2]
+          ] : [0, 0, 1]
+        };
+      }
+    }
+    
+    // If no direct joint found, look for parent body joints
+    let parentBodyId = bodyID;
+    while (parentBodyId > 0) {
+      parentBodyId = model.body_parentid[parentBodyId];
+      for (let jntId = 0; jntId < model.njnt; jntId++) {
+        if (model.jnt_bodyid && model.jnt_bodyid[jntId] === parentBodyId) {
+          return {
+            jointId: jntId,
+            bodyId: parentBodyId,
+            qposAddr: model.jnt_qposadr[jntId],
+            jointType: model.jnt_type[jntId],
+            axis: model.jnt_axis ? [
+              model.jnt_axis[jntId * 3 + 0],
+              model.jnt_axis[jntId * 3 + 1], 
+              model.jnt_axis[jntId * 3 + 2]
+            ] : [0, 0, 1]
+          };
+        }
+      }
+    }
+    
+    return null;
+  }
+
+  calculateSimpleAngleChange(jointInfo) {
+    // Calculate how much the mouse has moved since last frame
+    const deltaX = this.currentWorld.x - this.worldHit.x;
+    const deltaY = this.currentWorld.y - this.worldHit.y;
+    
+    // For most joints, use horizontal mouse movement to control rotation
+    // Scale down the movement for reasonable joint speed
+    let angleChange = 0;
+    
+    // Reduced sensitivity for more stable control
+    const sensitivity = 0.03; // Slightly more responsive
+    
+    if (jointInfo.jointType === 3) { // Hinge joint
+      // Use the component of mouse movement that makes most sense for the joint
+      angleChange = deltaX * sensitivity;
+    } else if (jointInfo.jointType === 2) { // Slide joint  
+      // For slide joints, use the mouse movement along the most relevant axis
+      angleChange = (deltaX + deltaY) * sensitivity;
+    } else if (jointInfo.jointType === 1) { // Ball joint
+      // For ball joints, use X movement (simplified)
+      angleChange = deltaX * sensitivity;
+    }
+    
+    // Clamp the change to prevent extreme movements
+    angleChange = Math.max(-0.05, Math.min(0.05, angleChange));
+    
+    return angleChange;
+  }
+
+  applyJointAngleChange(jointInfo, angleChange) {
+    const qpos = this.simulation.qpos;
+    const addr = jointInfo.qposAddr;
+    
+    if (addr >= 0 && addr < qpos.length) {
+      // Apply the incremental change
+      qpos[addr] += angleChange;
+      
+      // Apply joint limits
+      this.applyJointLimits(jointInfo, addr);
+    }
+  }
+
+  applyJointLimits(jointInfo, addr) {
+    const qpos = this.simulation.qpos;
+    const model = this.model;
+    
+    // Check if joint limits are defined in the model
+    if (model.jnt_limited && model.jnt_range && model.jnt_limited[jointInfo.jointId]) {
+      const rangeStart = jointInfo.jointId * 2;
+      const lowerLimit = model.jnt_range[rangeStart];
+      const upperLimit = model.jnt_range[rangeStart + 1];
+      
+      qpos[addr] = Math.max(lowerLimit, Math.min(upperLimit, qpos[addr]));
+    } else {
+      // Default safety limits
+      if (jointInfo.jointType === 3) { // Hinge joint - angle limits
+        qpos[addr] = Math.max(-Math.PI, Math.min(Math.PI, qpos[addr]));
+      } else if (jointInfo.jointType === 2) { // Slide joint - position limits
+        qpos[addr] = Math.max(-2, Math.min(2, qpos[addr]));
+      }
     }
   }
 
   setBodyPosition(bodyID, targetPosition) {
-    if (!this.simulation || !this.simulation.xpos) {
-      console.warn("Simulation or xpos not available");
-      return;
-    }
-    // Assume bodyID is valid if it comes from the scene
-    const posIndex = bodyID * 3;
-    if (posIndex + 2 < this.simulation.xpos.length) {
-      this.simulation.xpos[posIndex + 0] = targetPosition.x;
-      this.simulation.xpos[posIndex + 1] = targetPosition.y;
-      this.simulation.xpos[posIndex + 2] = targetPosition.z;
-    } else {
-      console.warn(`Position array too small for body ${bodyID}`);
-    }
+    // This method is now a fallback and shouldn't be needed with proper joint manipulation
+    console.warn("Fallback to direct body position manipulation for bodyID:", bodyID);
   }
 
-  toMujocoPos(vector) {
-    // Convert from Three.js coordinate system to MuJoCo
-    return new THREE.Vector3(vector.x, -vector.z, vector.y);
-  }
+
 
   showJointInfo(bodyID) {
     this.jointInfo.innerHTML = `Component ID: ${bodyID}`;
@@ -239,6 +355,8 @@ export class JointDragManager {
   }
 
   onPointer(evt) {
+    if (!this.enabled) return;
+
     if (evt.type === "pointerdown") {
       this.start(evt.clientX, evt.clientY);
       this.mouseDown = true;

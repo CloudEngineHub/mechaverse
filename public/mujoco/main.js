@@ -10,6 +10,7 @@ import {
   removeAllMujocoRoots,
 } from "./mujocoUtils.js";
 import { DragStateManager } from "./utils/DragStateManager.js";
+import { JointDragManager } from "./utils/JointDragManager.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 import load_mujoco from "./wasm/mujoco_wasm.js";
@@ -107,6 +108,20 @@ export class Mujoco {
       this.container.parentElement,
       this.controls
     );
+
+    // Joint drag manager for manipulating joints when simulation is paused
+    this.jointDragManager = new JointDragManager(
+      this.scene,
+      this.renderer,
+      this.camera,
+      this.container.parentElement,
+      this.controls,
+      null // Will be set when simulation is loaded
+    );
+
+    // Initially enable joint drag manager (starts paused) and disable physics drag
+    this.jointDragManager.enable();
+    this.dragStateManager.disable();
 
     // Add hover highlighting functionality
     this.hoverRaycaster = new THREE.Raycaster();
@@ -241,6 +256,17 @@ export class Mujoco {
     }
   }
 
+  updateDragMode() {
+    // Switch between joint drag manager (when paused) and physics drag manager (when simulating)
+    if (this.params["paused"]) {
+      this.dragStateManager.disable();
+      this.jointDragManager.enable();
+    } else {
+      this.jointDragManager.disable();
+      this.dragStateManager.enable();
+    }
+  }
+
   onWindowResize() {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
@@ -322,37 +348,11 @@ export class Mujoco {
         this.mujoco_time += timestep * 1000.0;
       }
     } else if (this.params["paused"]) {
-      // If paused, update the drag state manager
-      this.dragStateManager.update();
-      let dragged = this.dragStateManager.physicsObject;
-      if (dragged && dragged.bodyID) {
-        let b = dragged.bodyID;
-        getPosition(this.simulation.xpos, b, this.tmpVec, false);
-        getQuaternion(this.simulation.xquat, b, this.tmpQuat, false);
-
-        let offset = toMujocoPos(
-          this.dragStateManager.currentWorld
-            .clone()
-            .sub(this.dragStateManager.worldHit)
-            .multiplyScalar(0.3)
-        );
-        if (this.model.body_mocapid[b] >= 0) {
-          let addr = this.model.body_mocapid[b] * 3;
-          let pos = this.simulation.mocap_pos;
-          pos[addr + 0] += offset.x;
-          pos[addr + 1] += offset.y;
-          pos[addr + 2] += offset.z;
-        } else {
-          let root = this.model.body_rootid[b];
-          let addr = this.model.jnt_qposadr[this.model.body_jntadr[root]];
-          let pos = this.simulation.qpos;
-          pos[addr + 0] += offset.x;
-          pos[addr + 1] += offset.y;
-          pos[addr + 2] += offset.z;
-        }
+      // If paused, the joint drag manager handles manipulation and calls simulation.forward() when needed
+      // Only call forward if no joint manipulation is happening
+      if (!this.jointDragManager.active) {
+        this.simulation.forward();
       }
-
-      this.simulation.forward();
     }
 
     // Update body transforms from current simulation state
@@ -397,11 +397,13 @@ window.addEventListener("message", async (event) => {
       case "PAUSE_SIMULATION":
         if (viewer?.params) {
           viewer.params.paused = true;
+          viewer.updateDragMode();
         }
         break;
       case "RESUME_SIMULATION":
         if (viewer?.params) {
           viewer.params.paused = false;
+          viewer.updateDragMode();
         }
         break;
       case "LOAD_SCENE":
@@ -423,11 +425,18 @@ window.addEventListener("message", async (event) => {
           viewer.lights,
         ] = await loadSceneFromURL(mujoco, normalizedRoot, viewer);
 
+        // Update joint drag manager with the new model and simulation
+        viewer.jointDragManager.simulation = viewer.simulation;
+        viewer.jointDragManager.model = viewer.model;
+
         viewer.simulation.resetData();
         viewer.simulation.forward();
 
         // Default to paused when a scene is loaded
-        if (viewer?.params) viewer.params.paused = true;
+        if (viewer?.params) {
+          viewer.params.paused = true;
+          viewer.updateDragMode();
+        }
 
         window.parent.postMessage(
           { type: "SCENE_LOADED", sceneName: normalizedRoot },

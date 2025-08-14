@@ -33,12 +33,45 @@ export class DragStateManager {
         this.worldHit = new Vector3();
         this.currentWorld = new Vector3();
 
-        container.addEventListener( 'pointerdown', this.onPointer.bind(this), true );
-        document.addEventListener( 'pointermove', this.onPointer.bind(this), true );
-        document.addEventListener( 'pointerup'  , this.onPointer.bind(this), true );
-        document.addEventListener( 'pointerout' , this.onPointer.bind(this), true );
-        container.addEventListener( 'dblclick', this.onPointer.bind(this), false );
+        // Event listeners - initially enabled but can be disabled
+        this.enabled = true;
+        this.container = container;
+        this.boundOnPointer = this.onPointer.bind(this);
+        
+        container.addEventListener( 'pointerdown', this.boundOnPointer, true );
+        document.addEventListener( 'pointermove', this.boundOnPointer, true );
+        document.addEventListener( 'pointerup'  , this.boundOnPointer, true );
+        document.addEventListener( 'pointerout' , this.boundOnPointer, true );
+        container.addEventListener( 'dblclick', this.boundOnPointer, false );
     }
+
+    enable() {
+        if (!this.enabled) {
+            this.enabled = true;
+            this.container.addEventListener( 'pointerdown', this.boundOnPointer, true );
+            document.addEventListener( 'pointermove', this.boundOnPointer, true );
+            document.addEventListener( 'pointerup'  , this.boundOnPointer, true );
+            document.addEventListener( 'pointerout' , this.boundOnPointer, true );
+            this.container.addEventListener( 'dblclick', this.boundOnPointer, false );
+        }
+    }
+
+    disable() {
+        if (this.enabled) {
+            this.enabled = false;
+            this.container.removeEventListener( 'pointerdown', this.boundOnPointer, true );
+            document.removeEventListener( 'pointermove', this.boundOnPointer, true );
+            document.removeEventListener( 'pointerup'  , this.boundOnPointer, true );
+            document.removeEventListener( 'pointerout' , this.boundOnPointer, true );
+            this.container.removeEventListener( 'dblclick', this.boundOnPointer, false );
+            
+            // End any active dragging
+            if (this.active) {
+                this.end();
+            }
+        }
+    }
+
     updateRaycaster(x, y) {
         var rect = this.renderer.domElement.getBoundingClientRect();
         this.mousePos.x =  ((x - rect.left) / rect.width) * 2 - 1;
@@ -102,6 +135,8 @@ export class DragStateManager {
         this.mouseDown = false;
     }
     onPointer(evt) {
+        if (!this.enabled) return;
+
         if (evt.type == "pointerdown") {
             this.start(evt.clientX, evt.clientY);
             this.mouseDown = true;

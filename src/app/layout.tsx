@@ -13,7 +13,19 @@ const dmMono = DM_Mono({
 export const metadata: Metadata = {
   title: "Mechaverse",
   description:
-    "Mechaverse is a Placeholder project allowing you to upload your own robot and view it in a 3D environment.",
+    "Upload and view your MJCF, URDF, and USD robots and environments in a 3D environment.",
+  openGraph: {
+    title: "Mechaverse",
+    description:
+      "Upload and view your MJCF, URDF, and USD robots and environments in a 3D environment.",
+    url: "https://mechaverse.dev",
+    siteName: "Mechaverse",
+    images: [
+      { url: "https://mechaverse.dev/og.jpeg", width: 4518, height: 2567 },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
 };
 
 export default function RootLayout({

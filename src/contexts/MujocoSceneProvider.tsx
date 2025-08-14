@@ -10,7 +10,7 @@ import React, {
 } from "react";
 import { useRobot } from "@/hooks/useRobot";
 import { useExampleRobots } from "@/hooks/useExampleRobots";
-import { subscribeInlineXml, consumeLastInlineXml } from "@/lib/mujocoEvents";
+
 import {
   subscribeRobotFilesUpload,
   consumeLastRobotFilesUpload,
@@ -283,24 +283,6 @@ export const MujocoSceneProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     currentScenePathRef.current = currentScenePath;
   }, [currentScenePath]);
-
-  // Theme control removed; defaults are used in the iframe
-
-  // examples are provided by context
-
-  // Handle inline XML uploads published via event bus
-  useEffect(() => {
-    const pending = consumeLastInlineXml();
-    if (pending && activeRobotType === "MJCF") {
-      loadXmlContent(pending.name, pending.content);
-    }
-    const unsubscribe = subscribeInlineXml(({ name, content }) => {
-      if (activeRobotType === "MJCF") {
-        loadXmlContent(name, content);
-      }
-    });
-    return unsubscribe;
-  }, [activeRobotType, loadXmlContent]);
 
   // Handle unified robot files for MJCF (send all files to iframe FS and load root)
   useEffect(() => {

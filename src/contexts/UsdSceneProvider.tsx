@@ -9,10 +9,7 @@ import React, {
 } from "react";
 import { useRobot } from "@/hooks/useRobot";
 import { useExampleRobots } from "@/hooks/useExampleRobots";
-import {
-  subscribeUsdDataTransfer,
-  consumeLastUsdDataTransfer,
-} from "@/lib/usdEvents";
+
 import {
   subscribeRobotFilesUpload,
   consumeLastRobotFilesUpload,
@@ -101,24 +98,6 @@ export const UsdSceneProvider: React.FC<{ children: React.ReactNode }> = ({
     setIsLoading(false);
   }, [post]);
 
-  const onDataTransfer = useCallback(
-    async (dt: DataTransfer) => {
-      const files = Array.from(dt.files || []);
-      if (!files.length) return;
-      const filesMap: Record<string, File> = {};
-      for (const f of files) filesMap[`/${f.name}`] = f;
-      pendingUnifiedRef.current = { files: filesMap };
-      const entries = await Promise.all(
-        Object.entries(filesMap).map(async ([path, file]) => ({
-          path,
-          buffer: await file.arrayBuffer(),
-        }))
-      );
-      post({ type: "USD_LOAD_ENTRIES", entries });
-    },
-    [post]
-  );
-
   const onFilesMap = useCallback(
     async (files: Record<string, File>, primaryPath?: string) => {
       if (!iframeWindowRef.current) {
@@ -136,20 +115,6 @@ export const UsdSceneProvider: React.FC<{ children: React.ReactNode }> = ({
     },
     [post]
   );
-
-  // Handle USD file uploads via event bus
-  useEffect(() => {
-    const pending = consumeLastUsdDataTransfer();
-    if (pending && activeRobotType === "USD") {
-      onDataTransfer(pending.dataTransfer);
-    }
-    const unsubscribe = subscribeUsdDataTransfer(({ dataTransfer }) => {
-      if (activeRobotType === "USD") {
-        onDataTransfer(dataTransfer);
-      }
-    });
-    return unsubscribe;
-  }, [activeRobotType, onDataTransfer]);
 
   // Listen for loading state messages from the iframe
   useEffect(() => {

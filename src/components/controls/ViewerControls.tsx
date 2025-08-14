@@ -65,7 +65,7 @@ export default function ViewerControls({ onUploadClick }: ViewerControlsProps) {
   };
 
   return (
-    <div className="hidden md:flex w-full h-full flex-col p-6">
+    <div className="hidden lg:flex w-full h-full flex-col p-6">
       <div className="w-full grid grid-cols-5 gap-3 mb-3 items-stretch">
         <button
           onClick={onUploadClick}

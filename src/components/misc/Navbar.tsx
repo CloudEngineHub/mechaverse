@@ -74,7 +74,7 @@ export default function Navbar() {
 
       {/* Mobile: Hamburger to the right of the logo */}
       <button
-        className="ml-3 inline-flex items-center justify-center rounded-md p-2 md:hidden hover:bg-[#FFF2BF] focus:outline-none"
+        className="ml-3 inline-flex items-center justify-center rounded-md p-2 lg:hidden hover:bg-[#FFF2BF] focus:outline-none"
         aria-label="Open robot menu"
         onClick={() => setIsMenuOpen((v) => !v)}
       >
@@ -174,7 +174,7 @@ export default function Navbar() {
 
       {/* Mobile dropdown panel */}
       {isMenuOpen && (
-        <div className="md:hidden absolute top-full right-2 z-50 w-[88vw] max-w-sm bg-[#FFFBF1] border border-[#E9DFB5] rounded-xl shadow-lg p-3 max-h-[70vh] overflow-y-auto">
+        <div className="lg:hidden absolute top-full left-2 z-50 w-[88vw] max-w-sm bg-[#FFFBF1] border border-[#E9DFB5] rounded-xl shadow-lg p-3 max-h-[70vh] overflow-y-auto">
           <div className="flex flex-col gap-2">
             {examples.map((example, index) => {
               const isSelected =

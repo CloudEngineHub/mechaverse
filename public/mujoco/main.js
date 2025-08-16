@@ -128,11 +128,17 @@ export class Mujoco {
     this.hoveredBody = null;
     this.mousePos = new THREE.Vector2();
     this.originalMaterials = new Map(); // Store original materials for restoration
-    this.highlightColor = new THREE.Color(0xFBE651); // Yellow highlight color similar to URDF viewer
-    
+    this.highlightColor = new THREE.Color(0xfbe651); // Yellow highlight color similar to URDF viewer
+
     // Add mouse move event listener for hover detection
-    this.renderer.domElement.addEventListener('mousemove', this.onMouseMove.bind(this));
-    this.renderer.domElement.addEventListener('mouseleave', this.onMouseLeave.bind(this));
+    this.renderer.domElement.addEventListener(
+      "mousemove",
+      this.onMouseMove.bind(this)
+    );
+    this.renderer.domElement.addEventListener(
+      "mouseleave",
+      this.onMouseLeave.bind(this)
+    );
   }
 
   _createFillLights() {
@@ -161,19 +167,22 @@ export class Mujoco {
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.mousePos.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     this.mousePos.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    
+
     // Update raycaster
     this.hoverRaycaster.setFromCamera(this.mousePos, this.camera);
-    
+
     // Check for intersections with scene objects
-    const intersects = this.hoverRaycaster.intersectObjects(this.scene.children, true);
-    
+    const intersects = this.hoverRaycaster.intersectObjects(
+      this.scene.children,
+      true
+    );
+
     let newHoveredBody = null;
-    
+
     // Find the first intersected object that has a bodyID
     for (let i = 0; i < intersects.length; i++) {
       let obj = intersects[i].object;
-      
+
       // If the object has a bodyID, find the corresponding body group
       if (obj.bodyID !== undefined && obj.bodyID > 0) {
         // Find the body group in this.bodies
@@ -184,28 +193,34 @@ export class Mujoco {
         }
       }
     }
-    
+
     // Check if hover state changed
     if (newHoveredBody !== this.hoveredBody) {
       // Remove highlighting from previously hovered body
       if (this.hoveredBody) {
         this.removeBodyHighlight(this.hoveredBody);
-        window.parent.postMessage({
-          type: "BODY_MOUSEOUT",
-          bodyName: this.hoveredBody.name
-        }, "*");
+        window.parent.postMessage(
+          {
+            type: "BODY_MOUSEOUT",
+            bodyName: this.hoveredBody.name,
+          },
+          "*"
+        );
       }
-      
+
       // Update hovered body
       this.hoveredBody = newHoveredBody;
-      
+
       // Apply highlighting to newly hovered body
       if (this.hoveredBody) {
         this.applyBodyHighlight(this.hoveredBody);
-        window.parent.postMessage({
-          type: "BODY_MOUSEOVER", 
-          bodyName: this.hoveredBody.name
-        }, "*");
+        window.parent.postMessage(
+          {
+            type: "BODY_MOUSEOVER",
+            bodyName: this.hoveredBody.name,
+          },
+          "*"
+        );
       }
     }
   }
@@ -218,10 +233,10 @@ export class Mujoco {
         if (!this.originalMaterials.has(child.uuid)) {
           this.originalMaterials.set(child.uuid, {
             emissive: child.material.emissive.clone(),
-            emissiveIntensity: child.material.emissiveIntensity || 0
+            emissiveIntensity: child.material.emissiveIntensity || 0,
           });
         }
-        
+
         // Apply highlight
         child.material.emissive.copy(this.highlightColor);
         child.material.emissiveIntensity = 0.3;
@@ -232,12 +247,16 @@ export class Mujoco {
   removeBodyHighlight(bodyGroup) {
     // Traverse all children (meshes) in the body group and remove highlighting
     bodyGroup.traverse((child) => {
-      if (child.isMesh && child.material && this.originalMaterials.has(child.uuid)) {
+      if (
+        child.isMesh &&
+        child.material &&
+        this.originalMaterials.has(child.uuid)
+      ) {
         // Restore original material properties
         const original = this.originalMaterials.get(child.uuid);
         child.material.emissive.copy(original.emissive);
         child.material.emissiveIntensity = original.emissiveIntensity;
-        
+
         // Clean up stored material
         this.originalMaterials.delete(child.uuid);
       }
@@ -248,10 +267,13 @@ export class Mujoco {
     // Clear hover state when mouse leaves the canvas
     if (this.hoveredBody) {
       this.removeBodyHighlight(this.hoveredBody);
-      window.parent.postMessage({
-        type: "BODY_MOUSEOUT",
-        bodyName: this.hoveredBody.name
-      }, "*");
+      window.parent.postMessage(
+        {
+          type: "BODY_MOUSEOUT",
+          bodyName: this.hoveredBody.name,
+        },
+        "*"
+      );
       this.hoveredBody = null;
     }
   }

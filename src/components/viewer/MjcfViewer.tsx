@@ -15,7 +15,7 @@ export default function MjcfViewer() {
     setActiveRobotName,
   } = useRobot();
   const [isSimulating, setIsSimulating] = useState(false);
-  
+
   // Add hover state for body highlighting
   const [highlightedBody, setHighlightedBody] = useState<string | null>(null);
 
@@ -120,7 +120,7 @@ export default function MjcfViewer() {
         </button>
 
         {/* Simulation Control Buttons */}
-        <div className="absolute bottom-3 right-3 z-10 flex gap-2">
+        <div className="absolute bottom-4 left-4 z-10 flex gap-2">
           <button
             onClick={() => {
               if (isSimulating) {
@@ -147,7 +147,7 @@ export default function MjcfViewer() {
         {highlightedBody && (
           <div
             className={
-              "font-mono absolute bottom-4 left-4 text-[#9b8632] px-3 py-2 rounded-md text-sm z-10 flex items-center gap-2"
+              "font-mono absolute bottom-4 right-4 text-[#9b8632] px-3 py-2 rounded-md text-sm z-10 flex items-center gap-2"
             }
           >
             <svg

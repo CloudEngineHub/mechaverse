@@ -10,6 +10,7 @@ import {
   removeAllMujocoRoots,
 } from "./mujocoUtils.js";
 import { DragStateManager } from "./utils/DragStateManager.js";
+import { JointDragManager } from "./utils/JointDragManager.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 import load_mujoco from "./wasm/mujoco_wasm.js";
@@ -107,6 +108,37 @@ export class Mujoco {
       this.container.parentElement,
       this.controls
     );
+
+    // Joint drag manager for manipulating joints when simulation is paused
+    this.jointDragManager = new JointDragManager(
+      this.scene,
+      this.renderer,
+      this.camera,
+      this.container.parentElement,
+      this.controls,
+      null // Will be set when simulation is loaded
+    );
+
+    // Initially enable joint drag manager (starts paused) and disable physics drag
+    this.jointDragManager.enable();
+    this.dragStateManager.disable();
+
+    // Add hover highlighting functionality
+    this.hoverRaycaster = new THREE.Raycaster();
+    this.hoveredBody = null;
+    this.mousePos = new THREE.Vector2();
+    this.originalMaterials = new Map(); // Store original materials for restoration
+    this.highlightColor = new THREE.Color(0xfbe651); // Yellow highlight color similar to URDF viewer
+
+    // Add mouse move event listener for hover detection
+    this.renderer.domElement.addEventListener(
+      "mousemove",
+      this.onMouseMove.bind(this)
+    );
+    this.renderer.domElement.addEventListener(
+      "mouseleave",
+      this.onMouseLeave.bind(this)
+    );
   }
 
   _createFillLights() {
@@ -128,6 +160,133 @@ export class Mujoco {
     this.hemiLight.position.set(0, 1, 0);
     this.hemiLight.name = "HemisphereLight";
     this.scene.add(this.hemiLight);
+  }
+
+  onMouseMove(event) {
+    // Update mouse position for raycasting
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    this.mousePos.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    this.mousePos.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    // Update raycaster
+    this.hoverRaycaster.setFromCamera(this.mousePos, this.camera);
+
+    // Check for intersections with scene objects
+    const intersects = this.hoverRaycaster.intersectObjects(
+      this.scene.children,
+      true
+    );
+
+    let newHoveredBody = null;
+
+    // Find the first intersected object that has a bodyID
+    for (let i = 0; i < intersects.length; i++) {
+      let obj = intersects[i].object;
+
+      // If the object has a bodyID, find the corresponding body group
+      if (obj.bodyID !== undefined && obj.bodyID > 0) {
+        // Find the body group in this.bodies
+        const bodyGroup = this.bodies[obj.bodyID];
+        if (bodyGroup && bodyGroup.name) {
+          newHoveredBody = bodyGroup;
+          break;
+        }
+      }
+    }
+
+    // Check if hover state changed
+    if (newHoveredBody !== this.hoveredBody) {
+      // Remove highlighting from previously hovered body
+      if (this.hoveredBody) {
+        this.removeBodyHighlight(this.hoveredBody);
+        window.parent.postMessage(
+          {
+            type: "BODY_MOUSEOUT",
+            bodyName: this.hoveredBody.name,
+          },
+          "*"
+        );
+      }
+
+      // Update hovered body
+      this.hoveredBody = newHoveredBody;
+
+      // Apply highlighting to newly hovered body
+      if (this.hoveredBody) {
+        this.applyBodyHighlight(this.hoveredBody);
+        window.parent.postMessage(
+          {
+            type: "BODY_MOUSEOVER",
+            bodyName: this.hoveredBody.name,
+          },
+          "*"
+        );
+      }
+    }
+  }
+
+  applyBodyHighlight(bodyGroup) {
+    // Traverse all children (meshes) in the body group and apply highlighting
+    bodyGroup.traverse((child) => {
+      if (child.isMesh && child.material) {
+        // Store original material properties if not already stored
+        if (!this.originalMaterials.has(child.uuid)) {
+          this.originalMaterials.set(child.uuid, {
+            emissive: child.material.emissive.clone(),
+            emissiveIntensity: child.material.emissiveIntensity || 0,
+          });
+        }
+
+        // Apply highlight
+        child.material.emissive.copy(this.highlightColor);
+        child.material.emissiveIntensity = 0.3;
+      }
+    });
+  }
+
+  removeBodyHighlight(bodyGroup) {
+    // Traverse all children (meshes) in the body group and remove highlighting
+    bodyGroup.traverse((child) => {
+      if (
+        child.isMesh &&
+        child.material &&
+        this.originalMaterials.has(child.uuid)
+      ) {
+        // Restore original material properties
+        const original = this.originalMaterials.get(child.uuid);
+        child.material.emissive.copy(original.emissive);
+        child.material.emissiveIntensity = original.emissiveIntensity;
+
+        // Clean up stored material
+        this.originalMaterials.delete(child.uuid);
+      }
+    });
+  }
+
+  onMouseLeave() {
+    // Clear hover state when mouse leaves the canvas
+    if (this.hoveredBody) {
+      this.removeBodyHighlight(this.hoveredBody);
+      window.parent.postMessage(
+        {
+          type: "BODY_MOUSEOUT",
+          bodyName: this.hoveredBody.name,
+        },
+        "*"
+      );
+      this.hoveredBody = null;
+    }
+  }
+
+  updateDragMode() {
+    // Switch between joint drag manager (when paused) and physics drag manager (when simulating)
+    if (this.params["paused"]) {
+      this.dragStateManager.disable();
+      this.jointDragManager.enable();
+    } else {
+      this.jointDragManager.disable();
+      this.dragStateManager.enable();
+    }
   }
 
   onWindowResize() {
@@ -211,37 +370,11 @@ export class Mujoco {
         this.mujoco_time += timestep * 1000.0;
       }
     } else if (this.params["paused"]) {
-      // If paused, update the drag state manager
-      this.dragStateManager.update();
-      let dragged = this.dragStateManager.physicsObject;
-      if (dragged && dragged.bodyID) {
-        let b = dragged.bodyID;
-        getPosition(this.simulation.xpos, b, this.tmpVec, false);
-        getQuaternion(this.simulation.xquat, b, this.tmpQuat, false);
-
-        let offset = toMujocoPos(
-          this.dragStateManager.currentWorld
-            .clone()
-            .sub(this.dragStateManager.worldHit)
-            .multiplyScalar(0.3)
-        );
-        if (this.model.body_mocapid[b] >= 0) {
-          let addr = this.model.body_mocapid[b] * 3;
-          let pos = this.simulation.mocap_pos;
-          pos[addr + 0] += offset.x;
-          pos[addr + 1] += offset.y;
-          pos[addr + 2] += offset.z;
-        } else {
-          let root = this.model.body_rootid[b];
-          let addr = this.model.jnt_qposadr[this.model.body_jntadr[root]];
-          let pos = this.simulation.qpos;
-          pos[addr + 0] += offset.x;
-          pos[addr + 1] += offset.y;
-          pos[addr + 2] += offset.z;
-        }
+      // If paused, the joint drag manager handles manipulation and calls simulation.forward() when needed
+      // Only call forward if no joint manipulation is happening
+      if (!this.jointDragManager.active) {
+        this.simulation.forward();
       }
-
-      this.simulation.forward();
     }
 
     // Update body transforms from current simulation state
@@ -286,11 +419,13 @@ window.addEventListener("message", async (event) => {
       case "PAUSE_SIMULATION":
         if (viewer?.params) {
           viewer.params.paused = true;
+          viewer.updateDragMode();
         }
         break;
       case "RESUME_SIMULATION":
         if (viewer?.params) {
           viewer.params.paused = false;
+          viewer.updateDragMode();
         }
         break;
       case "LOAD_SCENE":
@@ -312,11 +447,18 @@ window.addEventListener("message", async (event) => {
           viewer.lights,
         ] = await loadSceneFromURL(mujoco, normalizedRoot, viewer);
 
+        // Update joint drag manager with the new model and simulation
+        viewer.jointDragManager.simulation = viewer.simulation;
+        viewer.jointDragManager.model = viewer.model;
+
         viewer.simulation.resetData();
         viewer.simulation.forward();
 
         // Default to paused when a scene is loaded
-        if (viewer?.params) viewer.params.paused = true;
+        if (viewer?.params) {
+          viewer.params.paused = true;
+          viewer.updateDragMode();
+        }
 
         window.parent.postMessage(
           { type: "SCENE_LOADED", sceneName: normalizedRoot },

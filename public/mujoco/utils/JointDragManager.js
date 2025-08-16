@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { toMujocoPos, getPosition, getQuaternion } from "../mujocoUtils.js";
 
 export class JointDragManager {
   constructor(scene, renderer, camera, container, controls, simulation) {
@@ -6,6 +7,7 @@ export class JointDragManager {
     this.renderer = renderer;
     this.camera = camera;
     this.simulation = simulation;
+    this.model = null; // Will be set when model is loaded
     this.mousePos = new THREE.Vector2();
     this.raycaster = new THREE.Raycaster();
     this.raycaster.params.Line.threshold = 0.1;
@@ -66,12 +68,37 @@ export class JointDragManager {
     this.currentWorld = new THREE.Vector3();
     this.originalJointPos = new THREE.Vector3();
 
-    // Event listeners
-    container.addEventListener("pointerdown", this.onPointer.bind(this), true);
-    document.addEventListener("pointermove", this.onPointer.bind(this), true);
-    document.addEventListener("pointerup", this.onPointer.bind(this), true);
-    document.addEventListener("pointerout", this.onPointer.bind(this), true);
-    container.addEventListener("dblclick", this.onPointer.bind(this), false);
+    // Event listeners - initially disabled until enabled
+    this.enabled = false;
+    this.container = container;
+    this.boundOnPointer = this.onPointer.bind(this);
+  }
+
+  enable() {
+    if (!this.enabled) {
+      this.enabled = true;
+      this.container.addEventListener("pointerdown", this.boundOnPointer, true);
+      document.addEventListener("pointermove", this.boundOnPointer, true);
+      document.addEventListener("pointerup", this.boundOnPointer, true);
+      document.addEventListener("pointerout", this.boundOnPointer, true);
+      this.container.addEventListener("dblclick", this.boundOnPointer, false);
+    }
+  }
+
+  disable() {
+    if (this.enabled) {
+      this.enabled = false;
+      this.container.removeEventListener("pointerdown", this.boundOnPointer, true);
+      document.removeEventListener("pointermove", this.boundOnPointer, true);
+      document.removeEventListener("pointerup", this.boundOnPointer, true);
+      document.removeEventListener("pointerout", this.boundOnPointer, true);
+      this.container.removeEventListener("dblclick", this.boundOnPointer, false);
+      
+      // End any active dragging
+      if (this.active) {
+        this.end();
+      }
+    }
   }
 
   updateRaycaster(x, y) {
@@ -117,11 +144,16 @@ export class JointDragManager {
         this.currentWorld.copy(hit);
         this.originalJointPos.copy(hit);
 
-        this.arrow.visible = true;
-        this.jointIndicator.visible = true;
+        // Hide visual indicators during drag for cleaner experience
+        // this.arrow.visible = true;
+        // this.jointIndicator.visible = true;
 
-        // Show joint info
-        this.showJointInfo(obj.bodyID);
+        // Find and show joint info
+        const jointInfo = this.findBodyJoint(obj.bodyID);
+        this.showJointInfo(obj.bodyID, jointInfo);
+
+        // Optional debug info for development
+        // console.log("Started joint drag for bodyID:", obj.bodyID);
 
         // Dragging joint started
         break;
@@ -146,57 +178,227 @@ export class JointDragManager {
       this.worldHit &&
       this.localHit &&
       this.currentWorld &&
-      this.arrow &&
       this.draggedJoint
     ) {
       this.worldHit.copy(this.localHit);
       this.draggedJoint.localToWorld(this.worldHit);
-      this.arrow.position.copy(this.worldHit);
-      this.arrow.setDirection(
-        this.currentWorld.clone().sub(this.worldHit).normalize()
-      );
-      this.arrow.setLength(
-        this.currentWorld.clone().sub(this.worldHit).length()
-      );
-      this.jointIndicator.position.copy(this.currentWorld);
+      
+      // Skip visual indicator updates since they're hidden
+      // this.arrow.position.copy(this.worldHit);
+      // this.arrow.setDirection(
+      //   this.currentWorld.clone().sub(this.worldHit).normalize()
+      // );
+      // this.arrow.setLength(
+      //   this.currentWorld.clone().sub(this.worldHit).length()
+      // );
+      // this.jointIndicator.position.copy(this.currentWorld);
     }
   }
 
   updateJointPosition() {
-    if (!this.draggedJoint || !this.simulation || !this.simulation.model)
+    if (!this.draggedJoint || !this.simulation || !this.model)
       return;
 
     const bodyID = this.draggedJoint.bodyID;
     if (bodyID === undefined || bodyID < 0) return;
 
-    // Use mocap body if available: attach this body to a mocap controller dynamically
-    // Strategy: move the subtree root via mocap and let MuJoCo enforce constraints.
-    // Find root body that has a free joint (for mocap-style movement). If none, fall back to position set.
-
-    const model = this.simulation.model;
-    const rootCandidate = model.body_rootid ? model.body_rootid[bodyID] : 0;
-
-    const targetPosition = this.currentWorld.clone();
-    const mujocoTarget = this.toMujocoPos(targetPosition);
-
     try {
-      // Apply pose to the body; when paused flag is 1, MuJoCo treats this as a perturbation target.
-      // We set orientation unchanged (identity delta), only position moved.
-      this.simulation.applyPose(
-        bodyID,
-        mujocoTarget.x,
-        mujocoTarget.y,
-        mujocoTarget.z,
-        1,
-        0,
-        0,
-        0,
-        1
-      );
+      // Find the joint that affects this body
+      const jointInfo = this.findBodyJoint(bodyID);
+      if (!jointInfo) {
+        console.warn("No joint found for bodyID:", bodyID);
+        return;
+      }
+
+      // Calculate dampened joint change based on drag (URDF-style)
+      const dampedChange = this.calculateJointAngleChange(jointInfo);
+      
+      // Apply the dampened joint change
+      this.applyJointChange(jointInfo, dampedChange);
+      
+      // Forward the simulation to apply changes
       this.simulation.forward();
+      
     } catch (e) {
-      // Fallback: directly update body position buffer (less physical but interactive)
-      this.setBodyPosition(bodyID, mujocoTarget);
+      console.warn("Failed to update joint position:", e);
+    }
+  }
+
+  findBodyJoint(bodyID) {
+    const model = this.model;
+    
+    // Look for joints that directly affect this body
+    for (let jntId = 0; jntId < model.njnt; jntId++) {
+      // Check if this joint's body matches our target body
+      if (model.jnt_bodyid && model.jnt_bodyid[jntId] === bodyID) {
+        return {
+          jointId: jntId,
+          bodyId: bodyID,
+          qposAddr: model.jnt_qposadr[jntId],
+          jointType: model.jnt_type[jntId], // 0=free, 1=ball, 2=slide, 3=hinge
+          axis: model.jnt_axis ? [
+            model.jnt_axis[jntId * 3 + 0],
+            model.jnt_axis[jntId * 3 + 1], 
+            model.jnt_axis[jntId * 3 + 2]
+          ] : [0, 0, 1]
+        };
+      }
+    }
+    
+    // If no direct joint found, look for parent body joints
+    let parentBodyId = bodyID;
+    while (parentBodyId > 0) {
+      parentBodyId = model.body_parentid[parentBodyId];
+      for (let jntId = 0; jntId < model.njnt; jntId++) {
+        if (model.jnt_bodyid && model.jnt_bodyid[jntId] === parentBodyId) {
+          return {
+            jointId: jntId,
+            bodyId: parentBodyId,
+            qposAddr: model.jnt_qposadr[jntId],
+            jointType: model.jnt_type[jntId],
+            axis: model.jnt_axis ? [
+              model.jnt_axis[jntId * 3 + 0],
+              model.jnt_axis[jntId * 3 + 1], 
+              model.jnt_axis[jntId * 3 + 2]
+            ] : [0, 0, 1]
+          };
+        }
+      }
+    }
+    
+    return null;
+  }
+
+  calculateJointAngleChange(jointInfo) {
+    // Get current joint value
+    const currentValue = this.simulation.qpos[jointInfo.qposAddr] || 0;
+    
+    // Calculate target value based on joint type using URDF-style calculations
+    let targetValue = currentValue;
+    
+    if (jointInfo.jointType === 3) { // Hinge joint (revolute)
+      const delta = this.getRevoluteDelta(jointInfo, this.worldHit, this.currentWorld);
+      targetValue = currentValue + delta;
+    } else if (jointInfo.jointType === 2) { // Slide joint (prismatic)
+      const delta = this.getPrismaticDelta(jointInfo, this.worldHit, this.currentWorld);
+      targetValue = currentValue + delta;
+    } else if (jointInfo.jointType === 1) { // Ball joint
+      // For ball joints, use simplified rotation around primary axis
+      const delta = this.getRevoluteDelta(jointInfo, this.worldHit, this.currentWorld);
+      targetValue = currentValue + delta;
+    }
+    
+    // Apply dampening factor for smooth movement (like URDF)
+    const dampening = 0.4; // Adjust this for responsiveness vs smoothness
+    const dampedChange = (targetValue - currentValue) * dampening;
+    
+    // Flip the sign to fix inverted movement
+    return -dampedChange;
+  }
+
+  getRevoluteDelta(jointInfo, startPoint, endPoint) {
+    // Create temporary vectors for calculations (like URDF implementation)
+    const tempVector = new THREE.Vector3();
+    const tempVector2 = new THREE.Vector3();
+    const pivotPoint = new THREE.Vector3();
+    const projectedStartPoint = new THREE.Vector3();
+    const projectedEndPoint = new THREE.Vector3();
+    const plane = new THREE.Plane();
+    
+    // Get joint axis in world space
+    const jointAxis = new THREE.Vector3(
+      jointInfo.axis[0], 
+      jointInfo.axis[1], 
+      jointInfo.axis[2]
+    );
+    
+    // Find the joint's world position (pivot point)
+    // For MuJoCo, we can get this from the body position
+    const bodyIndex = jointInfo.bodyId * 3;
+    if (this.simulation.xpos && bodyIndex + 2 < this.simulation.xpos.length) {
+      const mujocoPos = new THREE.Vector3(
+        this.simulation.xpos[bodyIndex + 0],
+        this.simulation.xpos[bodyIndex + 1], 
+        this.simulation.xpos[bodyIndex + 2]
+      );
+      // Convert from MuJoCo to THREE.js coordinates using the utility function
+      pivotPoint.copy(mujocoPos);
+      // Note: toMujocoPos converts TO MuJoCo, so we need the inverse
+      // MuJoCo: x, y, z -> THREE: x, -z, y
+      pivotPoint.set(mujocoPos.x, -mujocoPos.z, mujocoPos.y);
+    } else {
+      // Fallback to using the original hit point
+      pivotPoint.copy(startPoint);
+    }
+    
+    // Set up the plane perpendicular to joint axis
+    plane.setFromNormalAndCoplanarPoint(jointAxis, pivotPoint);
+    
+    // Project the drag points onto the plane
+    plane.projectPoint(startPoint, projectedStartPoint);
+    plane.projectPoint(endPoint, projectedEndPoint);
+    
+    // Get the directions relative to the pivot
+    projectedStartPoint.sub(pivotPoint);
+    projectedEndPoint.sub(pivotPoint);
+    
+    // Handle zero-length vectors
+    if (projectedStartPoint.length() < 0.001 || projectedEndPoint.length() < 0.001) {
+      return 0;
+    }
+    
+    // Calculate the angle between the projected vectors
+    tempVector.crossVectors(projectedStartPoint, projectedEndPoint);
+    const direction = Math.sign(tempVector.dot(jointAxis));
+    const angle = projectedEndPoint.angleTo(projectedStartPoint);
+    
+    // Apply sensitivity scaling
+    const sensitivity = 0.75; // Adjust for desired responsiveness
+    return direction * angle * sensitivity;
+  }
+
+  getPrismaticDelta(jointInfo, startPoint, endPoint) {
+    // Calculate drag vector
+    const tempVector = new THREE.Vector3();
+    tempVector.subVectors(endPoint, startPoint);
+    
+    // Get joint axis
+    const jointAxis = new THREE.Vector3(
+      jointInfo.axis[0], 
+      jointInfo.axis[1], 
+      jointInfo.axis[2]
+    );
+    jointAxis.normalize();
+    
+    // Project drag onto joint axis
+    const delta = tempVector.dot(jointAxis);
+    
+    // Apply sensitivity scaling
+    const sensitivity = 0.03; // Adjust for desired responsiveness
+    return delta * sensitivity;
+  }
+
+  applyJointChange(jointInfo, change) {
+    const qpos = this.simulation.qpos;
+    const addr = jointInfo.qposAddr;
+    
+    if (addr >= 0 && addr < qpos.length) {
+      // Apply the dampened change to the joint position/angle
+      qpos[addr] += change;
+      
+      // Apply joint limits based on MuJoCo model (if available)
+      if (this.model.jnt_limited && this.model.jnt_limited[jointInfo.jointId]) {
+        const lowerLimit = this.model.jnt_range ? this.model.jnt_range[jointInfo.jointId * 2] : -Math.PI;
+        const upperLimit = this.model.jnt_range ? this.model.jnt_range[jointInfo.jointId * 2 + 1] : Math.PI;
+        qpos[addr] = Math.max(lowerLimit, Math.min(upperLimit, qpos[addr]));
+      } else {
+        // Default safety limits
+        if (jointInfo.jointType === 3) { // Hinge joint - clamp angles
+          qpos[addr] = Math.max(-2 * Math.PI, Math.min(2 * Math.PI, qpos[addr]));
+        } else if (jointInfo.jointType === 2) { // Slide joint - clamp translation
+          qpos[addr] = Math.max(-2, Math.min(2, qpos[addr]));
+        }
+      }
     }
   }
 
@@ -205,24 +407,33 @@ export class JointDragManager {
       console.warn("Simulation or xpos not available");
       return;
     }
+    
+    // Convert target position to MuJoCo coordinates
+    const mujocoPos = toMujocoPos(targetPosition.clone());
+    
     // Assume bodyID is valid if it comes from the scene
     const posIndex = bodyID * 3;
     if (posIndex + 2 < this.simulation.xpos.length) {
-      this.simulation.xpos[posIndex + 0] = targetPosition.x;
-      this.simulation.xpos[posIndex + 1] = targetPosition.y;
-      this.simulation.xpos[posIndex + 2] = targetPosition.z;
+      this.simulation.xpos[posIndex + 0] = mujocoPos.x;
+      this.simulation.xpos[posIndex + 1] = mujocoPos.y;
+      this.simulation.xpos[posIndex + 2] = mujocoPos.z;
+      
+      // Forward the simulation to apply the position change
+      this.simulation.forward();
     } else {
-      console.warn(`Position array too small for body ${bodyID}`);
+      console.warn(`Position array too small for body ${bodyID}. Array length: ${this.simulation.xpos.length}, required index: ${posIndex + 2}`);
     }
   }
 
-  toMujocoPos(vector) {
-    // Convert from Three.js coordinate system to MuJoCo
-    return new THREE.Vector3(vector.x, -vector.z, vector.y);
-  }
 
-  showJointInfo(bodyID) {
-    this.jointInfo.innerHTML = `Component ID: ${bodyID}`;
+
+  showJointInfo(bodyID, jointInfo = null) {
+    if (jointInfo) {
+      const jointTypeName = ['free', 'ball', 'slide', 'hinge'][jointInfo.jointType] || 'unknown';
+      this.jointInfo.innerHTML = `Joint ${jointInfo.jointId} (${jointTypeName})`;
+    } else {
+      this.jointInfo.innerHTML = `Component ID: ${bodyID}`;
+    }
     this.jointInfo.style.display = "block";
   }
 
@@ -239,6 +450,8 @@ export class JointDragManager {
   }
 
   onPointer(evt) {
+    if (!this.enabled) return;
+
     if (evt.type === "pointerdown") {
       this.start(evt.clientX, evt.clientY);
       this.mouseDown = true;

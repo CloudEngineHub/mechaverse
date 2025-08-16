@@ -88,12 +88,20 @@ export class JointDragManager {
   disable() {
     if (this.enabled) {
       this.enabled = false;
-      this.container.removeEventListener("pointerdown", this.boundOnPointer, true);
+      this.container.removeEventListener(
+        "pointerdown",
+        this.boundOnPointer,
+        true
+      );
       document.removeEventListener("pointermove", this.boundOnPointer, true);
       document.removeEventListener("pointerup", this.boundOnPointer, true);
       document.removeEventListener("pointerout", this.boundOnPointer, true);
-      this.container.removeEventListener("dblclick", this.boundOnPointer, false);
-      
+      this.container.removeEventListener(
+        "dblclick",
+        this.boundOnPointer,
+        false
+      );
+
       // End any active dragging
       if (this.active) {
         this.end();
@@ -182,7 +190,7 @@ export class JointDragManager {
     ) {
       this.worldHit.copy(this.localHit);
       this.draggedJoint.localToWorld(this.worldHit);
-      
+
       // Skip visual indicator updates since they're hidden
       // this.arrow.position.copy(this.worldHit);
       // this.arrow.setDirection(
@@ -196,8 +204,7 @@ export class JointDragManager {
   }
 
   updateJointPosition() {
-    if (!this.draggedJoint || !this.simulation || !this.model)
-      return;
+    if (!this.draggedJoint || !this.simulation || !this.model) return;
 
     const bodyID = this.draggedJoint.bodyID;
     if (bodyID === undefined || bodyID < 0) return;
@@ -212,13 +219,12 @@ export class JointDragManager {
 
       // Calculate dampened joint change based on drag (URDF-style)
       const dampedChange = this.calculateJointAngleChange(jointInfo);
-      
+
       // Apply the dampened joint change
       this.applyJointChange(jointInfo, dampedChange);
-      
+
       // Forward the simulation to apply changes
       this.simulation.forward();
-      
     } catch (e) {
       console.warn("Failed to update joint position:", e);
     }
@@ -226,7 +232,7 @@ export class JointDragManager {
 
   findBodyJoint(bodyID) {
     const model = this.model;
-    
+
     // Look for joints that directly affect this body
     for (let jntId = 0; jntId < model.njnt; jntId++) {
       // Check if this joint's body matches our target body
@@ -236,15 +242,17 @@ export class JointDragManager {
           bodyId: bodyID,
           qposAddr: model.jnt_qposadr[jntId],
           jointType: model.jnt_type[jntId], // 0=free, 1=ball, 2=slide, 3=hinge
-          axis: model.jnt_axis ? [
-            model.jnt_axis[jntId * 3 + 0],
-            model.jnt_axis[jntId * 3 + 1], 
-            model.jnt_axis[jntId * 3 + 2]
-          ] : [0, 0, 1]
+          axis: model.jnt_axis
+            ? [
+                model.jnt_axis[jntId * 3 + 0],
+                model.jnt_axis[jntId * 3 + 1],
+                model.jnt_axis[jntId * 3 + 2],
+              ]
+            : [0, 0, 1],
         };
       }
     }
-    
+
     // If no direct joint found, look for parent body joints
     let parentBodyId = bodyID;
     while (parentBodyId > 0) {
@@ -256,42 +264,59 @@ export class JointDragManager {
             bodyId: parentBodyId,
             qposAddr: model.jnt_qposadr[jntId],
             jointType: model.jnt_type[jntId],
-            axis: model.jnt_axis ? [
-              model.jnt_axis[jntId * 3 + 0],
-              model.jnt_axis[jntId * 3 + 1], 
-              model.jnt_axis[jntId * 3 + 2]
-            ] : [0, 0, 1]
+            axis: model.jnt_axis
+              ? [
+                  model.jnt_axis[jntId * 3 + 0],
+                  model.jnt_axis[jntId * 3 + 1],
+                  model.jnt_axis[jntId * 3 + 2],
+                ]
+              : [0, 0, 1],
           };
         }
       }
     }
-    
+
     return null;
   }
 
   calculateJointAngleChange(jointInfo) {
     // Get current joint value
     const currentValue = this.simulation.qpos[jointInfo.qposAddr] || 0;
-    
+
     // Calculate target value based on joint type using URDF-style calculations
     let targetValue = currentValue;
-    
-    if (jointInfo.jointType === 3) { // Hinge joint (revolute)
-      const delta = this.getRevoluteDelta(jointInfo, this.worldHit, this.currentWorld);
+
+    if (jointInfo.jointType === 3) {
+      // Hinge joint (revolute)
+      const delta = this.getRevoluteDelta(
+        jointInfo,
+        this.worldHit,
+        this.currentWorld
+      );
       targetValue = currentValue + delta;
-    } else if (jointInfo.jointType === 2) { // Slide joint (prismatic)
-      const delta = this.getPrismaticDelta(jointInfo, this.worldHit, this.currentWorld);
+    } else if (jointInfo.jointType === 2) {
+      // Slide joint (prismatic)
+      const delta = this.getPrismaticDelta(
+        jointInfo,
+        this.worldHit,
+        this.currentWorld
+      );
       targetValue = currentValue + delta;
-    } else if (jointInfo.jointType === 1) { // Ball joint
+    } else if (jointInfo.jointType === 1) {
+      // Ball joint
       // For ball joints, use simplified rotation around primary axis
-      const delta = this.getRevoluteDelta(jointInfo, this.worldHit, this.currentWorld);
+      const delta = this.getRevoluteDelta(
+        jointInfo,
+        this.worldHit,
+        this.currentWorld
+      );
       targetValue = currentValue + delta;
     }
-    
+
     // Apply dampening factor for smooth movement (like URDF)
     const dampening = 0.4; // Adjust this for responsiveness vs smoothness
     const dampedChange = (targetValue - currentValue) * dampening;
-    
+
     // Flip the sign to fix inverted movement
     return -dampedChange;
   }
@@ -304,21 +329,21 @@ export class JointDragManager {
     const projectedStartPoint = new THREE.Vector3();
     const projectedEndPoint = new THREE.Vector3();
     const plane = new THREE.Plane();
-    
+
     // Get joint axis in world space
     const jointAxis = new THREE.Vector3(
-      jointInfo.axis[0], 
-      jointInfo.axis[1], 
+      jointInfo.axis[0],
+      jointInfo.axis[1],
       jointInfo.axis[2]
     );
-    
+
     // Find the joint's world position (pivot point)
     // For MuJoCo, we can get this from the body position
     const bodyIndex = jointInfo.bodyId * 3;
     if (this.simulation.xpos && bodyIndex + 2 < this.simulation.xpos.length) {
       const mujocoPos = new THREE.Vector3(
         this.simulation.xpos[bodyIndex + 0],
-        this.simulation.xpos[bodyIndex + 1], 
+        this.simulation.xpos[bodyIndex + 1],
         this.simulation.xpos[bodyIndex + 2]
       );
       // Convert from MuJoCo to THREE.js coordinates using the utility function
@@ -330,28 +355,31 @@ export class JointDragManager {
       // Fallback to using the original hit point
       pivotPoint.copy(startPoint);
     }
-    
+
     // Set up the plane perpendicular to joint axis
     plane.setFromNormalAndCoplanarPoint(jointAxis, pivotPoint);
-    
+
     // Project the drag points onto the plane
     plane.projectPoint(startPoint, projectedStartPoint);
     plane.projectPoint(endPoint, projectedEndPoint);
-    
+
     // Get the directions relative to the pivot
     projectedStartPoint.sub(pivotPoint);
     projectedEndPoint.sub(pivotPoint);
-    
+
     // Handle zero-length vectors
-    if (projectedStartPoint.length() < 0.001 || projectedEndPoint.length() < 0.001) {
+    if (
+      projectedStartPoint.length() < 0.001 ||
+      projectedEndPoint.length() < 0.001
+    ) {
       return 0;
     }
-    
+
     // Calculate the angle between the projected vectors
     tempVector.crossVectors(projectedStartPoint, projectedEndPoint);
     const direction = Math.sign(tempVector.dot(jointAxis));
     const angle = projectedEndPoint.angleTo(projectedStartPoint);
-    
+
     // Apply sensitivity scaling
     const sensitivity = 0.75; // Adjust for desired responsiveness
     return direction * angle * sensitivity;
@@ -361,18 +389,18 @@ export class JointDragManager {
     // Calculate drag vector
     const tempVector = new THREE.Vector3();
     tempVector.subVectors(endPoint, startPoint);
-    
+
     // Get joint axis
     const jointAxis = new THREE.Vector3(
-      jointInfo.axis[0], 
-      jointInfo.axis[1], 
+      jointInfo.axis[0],
+      jointInfo.axis[1],
       jointInfo.axis[2]
     );
     jointAxis.normalize();
-    
+
     // Project drag onto joint axis
     const delta = tempVector.dot(jointAxis);
-    
+
     // Apply sensitivity scaling
     const sensitivity = 0.03; // Adjust for desired responsiveness
     return delta * sensitivity;
@@ -381,21 +409,30 @@ export class JointDragManager {
   applyJointChange(jointInfo, change) {
     const qpos = this.simulation.qpos;
     const addr = jointInfo.qposAddr;
-    
+
     if (addr >= 0 && addr < qpos.length) {
       // Apply the dampened change to the joint position/angle
       qpos[addr] += change;
-      
+
       // Apply joint limits based on MuJoCo model (if available)
       if (this.model.jnt_limited && this.model.jnt_limited[jointInfo.jointId]) {
-        const lowerLimit = this.model.jnt_range ? this.model.jnt_range[jointInfo.jointId * 2] : -Math.PI;
-        const upperLimit = this.model.jnt_range ? this.model.jnt_range[jointInfo.jointId * 2 + 1] : Math.PI;
+        const lowerLimit = this.model.jnt_range
+          ? this.model.jnt_range[jointInfo.jointId * 2]
+          : -Math.PI;
+        const upperLimit = this.model.jnt_range
+          ? this.model.jnt_range[jointInfo.jointId * 2 + 1]
+          : Math.PI;
         qpos[addr] = Math.max(lowerLimit, Math.min(upperLimit, qpos[addr]));
       } else {
         // Default safety limits
-        if (jointInfo.jointType === 3) { // Hinge joint - clamp angles
-          qpos[addr] = Math.max(-2 * Math.PI, Math.min(2 * Math.PI, qpos[addr]));
-        } else if (jointInfo.jointType === 2) { // Slide joint - clamp translation
+        if (jointInfo.jointType === 3) {
+          // Hinge joint - clamp angles
+          qpos[addr] = Math.max(
+            -2 * Math.PI,
+            Math.min(2 * Math.PI, qpos[addr])
+          );
+        } else if (jointInfo.jointType === 2) {
+          // Slide joint - clamp translation
           qpos[addr] = Math.max(-2, Math.min(2, qpos[addr]));
         }
       }
@@ -407,37 +444,40 @@ export class JointDragManager {
       console.warn("Simulation or xpos not available");
       return;
     }
-    
+
     // Convert target position to MuJoCo coordinates
     const mujocoPos = toMujocoPos(targetPosition.clone());
-    
+
     // Assume bodyID is valid if it comes from the scene
     const posIndex = bodyID * 3;
     if (posIndex + 2 < this.simulation.xpos.length) {
       this.simulation.xpos[posIndex + 0] = mujocoPos.x;
       this.simulation.xpos[posIndex + 1] = mujocoPos.y;
       this.simulation.xpos[posIndex + 2] = mujocoPos.z;
-      
+
       // Forward the simulation to apply the position change
       this.simulation.forward();
     } else {
-      console.warn(`Position array too small for body ${bodyID}. Array length: ${this.simulation.xpos.length}, required index: ${posIndex + 2}`);
+      console.warn(
+        `Position array too small for body ${bodyID}. Array length: ${
+          this.simulation.xpos.length
+        }, required index: ${posIndex + 2}`
+      );
     }
   }
 
-
-
   showJointInfo(bodyID, jointInfo = null) {
     if (jointInfo) {
-      const jointTypeName = ['free', 'ball', 'slide', 'hinge'][jointInfo.jointType] || 'unknown';
+      const jointTypeName =
+        ["free", "ball", "slide", "hinge"][jointInfo.jointType] || "unknown";
       this.jointInfo.innerHTML = `Joint ${jointInfo.jointId} (${jointTypeName})`;
     } else {
       this.jointInfo.innerHTML = `Component ID: ${bodyID}`;
     }
-    this.jointInfo.style.display = "block";
+    this.jointInfo.style.display = "none";
   }
 
-  end(evt) {
+  end() {
     this.draggedJoint = null;
     this.active = false;
     this.controls.enabled = true;

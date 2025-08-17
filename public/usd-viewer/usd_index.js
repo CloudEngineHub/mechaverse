@@ -21,17 +21,17 @@ const getUsdModule = globalThis["NEEDLE:USD:GET"];
 
 export function init(
   options = {
-    hdrPath: "/usd-viewer/environments/neutral.hdr",
-    hostManagedDnd: false,
-    hostManagedUrl: true,
+    container,
+    hdrPath,
   }
 ) {
   return new Promise((resolveInit) => {
     if (!options || !options.container) {
       throw new Error("init: options.container is required");
     }
-    if (!options.hdrPath)
+    if (!options.hdrPath) {
       options.hdrPath = "/usd-viewer/environments/neutral.hdr";
+    }
 
     let handle = null;
 
@@ -63,40 +63,13 @@ export function init(
         window.__usdFetchRewritten = true;
       }
 
-      let params = new URL(document.location).searchParams;
-
-      // When the host manages URLs/state, ignore any ?file= param entirely
-      let filename = options.hostManagedUrl ? "" : params.get("file") || "";
+      // Host manages URLs/state, so we don't need URL parameter handling
+      let filename = "";
       let currentDisplayFilename = "";
-
-      if (filename) {
-        // get filename from URL
-        currentDisplayFilename = filename
-          .split("/")
-          .pop()
-          .split("#")[0]
-          .split("?")[0];
-      }
-
-      function updateUrl() {
-        if (options.hostManagedUrl) return; // don't touch URL; host manages state
-        // set quick look link (removed DOM dependency)
-        // Strip any query for pushState cleanliness
-        const indexOfQuery = filename.indexOf("?");
-        if (indexOfQuery >= 0) {
-          filename = filename.substring(0, indexOfQuery);
-        }
-
-        const currentUrl = new URL(window.location.href);
-        // set the file query parameter
-        currentUrl.searchParams.set("file", filename);
-        window.history.pushState({}, filename, currentUrl);
-      }
 
       const initPromise = setup();
 
       console.log("Loading USD Module...");
-      updateUrl();
       try {
         Promise.all([
           getUsdModule({
@@ -133,13 +106,7 @@ export function init(
           USD = Usd;
           if (resolveUsdReady) resolveUsdReady(USD);
           animate();
-          if (!options.hostManagedUrl && filename) {
-            clearStage();
-            const urlPath = new URL(document.location).searchParams
-              .get("file")
-              .split("?")[0];
-            loadUsdFile(undefined, filename, urlPath, true);
-          }
+          // Host manages file loading, so we don't auto-load from URL params
         });
       } catch (error) {
         if (error.toString().indexOf("SharedArrayBuffer") >= 0) {
@@ -399,9 +366,9 @@ export function init(
           return;
         }
 
-        camera.position.z = params.get("cameraZ") || 7;
-        camera.position.y = params.get("cameraY") || 7;
-        camera.position.x = params.get("cameraX") || 0;
+        camera.position.z = 7;
+        camera.position.y = 7;
+        camera.position.x = 0;
 
         const direction = controls.target
           .clone()
@@ -428,9 +395,9 @@ export function init(
           1,
           3500
         ));
-        camera.position.z = params.get("cameraZ") || 7;
-        camera.position.y = params.get("cameraY") || 7;
-        camera.position.x = params.get("cameraX") || 0;
+        camera.position.z = 7;
+        camera.position.y = 7;
+        camera.position.x = 0;
 
         const scene = (window.scene = new Scene());
 
@@ -443,9 +410,8 @@ export function init(
           alpha: true,
         }));
         renderer.setPixelRatio(window.devicePixelRatio);
-        // Size the renderer to the container, not the window
-        const containerRect = options.container.getBoundingClientRect();
-        renderer.setSize(containerRect.width, containerRect.height);
+        // Size the renderer to the window like MuJoCo does
+        renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.outputColorSpace = SRGBColorSpace;
         // renderer.toneMapping = AgXToneMapping;
         // renderer.toneMappingExposure = 1;
@@ -490,20 +456,8 @@ export function init(
         controls.update();
 
         window.addEventListener("resize", onWindowResize);
-        // Observe container resize as well to keep canvas in sync
-        const ro = new ResizeObserver(() => {
-          const rect = options.container.getBoundingClientRect();
-          camera.aspect = rect.width / rect.height;
-          camera.updateProjectionMatrix();
-          renderer.setSize(rect.width, rect.height);
-        });
-        ro.observe(options.container);
-        window.__usdResizeObserver = ro;
 
-        if (!options.hostManagedDnd) {
-          renderer.domElement.addEventListener("drop", dropHandler);
-          renderer.domElement.addEventListener("dragover", dragOverHandler);
-        }
+        // Host manages drag and drop, so we don't add event listeners here
 
         // React/host will call programmatic API to load files instead of DOM scanning.
 
@@ -533,10 +487,9 @@ export function init(
       }
 
       function onWindowResize() {
-        const rect = options.container.getBoundingClientRect();
-        camera.aspect = rect.width / rect.height;
+        camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
-        renderer.setSize(rect.width, rect.height);
+        renderer.setSize(window.innerWidth, window.innerHeight);
       }
 
       function render() {
@@ -878,33 +831,12 @@ export function init(
         }
       }
 
-      /**
-       * @param {DragEvent} ev
-       */
-      function dropHandler(ev) {
-        if (debugFileHandling)
-          console.log(
-            "File(s) dropped",
-            ev.dataTransfer.items,
-            ev.dataTransfer.files
-          );
-
-        // Prevent default behavior (Prevent file from being opened)
-        ev.preventDefault();
-        processDataTransfer(ev.dataTransfer);
-      }
-
-      function dragOverHandler(ev) {
-        ev.preventDefault();
-      }
-
       // Provide a minimal imperative API to the host (capturing the local scope)
       handle = {
         // Load a USD file from a URL
         loadFromURL: async (url) => {
           try {
             filename = url;
-            updateUrl();
             if (!USD) await usdReady;
             clearStage();
             const parts = url.split("/");
@@ -1075,23 +1007,7 @@ export function init(
         dispose: () => {
           try {
             window.removeEventListener("resize", onWindowResize);
-            try {
-              if (
-                window.__usdResizeObserver &&
-                typeof window.__usdResizeObserver.disconnect === "function"
-              ) {
-                window.__usdResizeObserver.disconnect();
-              }
-            } catch {}
             if (window.renderer && window.renderer.domElement) {
-              window.renderer.domElement.removeEventListener(
-                "drop",
-                dropHandler
-              );
-              window.renderer.domElement.removeEventListener(
-                "dragover",
-                dragOverHandler
-              );
               if (options.container.contains(window.renderer.domElement)) {
                 options.container.removeChild(window.renderer.domElement);
               }
@@ -1123,3 +1039,108 @@ export function init(
     }
   });
 }
+
+// Auto-initialize when loaded as a module
+let handle = null;
+
+// Create container dynamically like MuJoCo does
+const container = document.createElement("div");
+document.body.appendChild(container);
+
+function post(type, payload = {}) {
+  try {
+    parent.postMessage({ type, ...payload }, "*");
+  } catch {}
+}
+
+async function bootstrap() {
+  try {
+    handle = await init({
+      container,
+      hdrPath: "/usd-viewer/environments/neutral.hdr",
+    });
+  } catch (e) {
+    console.warn("[USD Iframe] init error", e);
+  } finally {
+    post("IFRAME_READY");
+  }
+}
+
+// helper to load entries [{ path, buffer(ArrayBuffer) }, ...]
+async function loadFromEntries(entries, primaryPath) {
+  try {
+    if (!handle) return;
+    // Route through handle method if available
+    if (handle.loadFromEntries) {
+      await handle.loadFromEntries(entries, primaryPath);
+      return;
+    }
+    // Fallback: emulate via DataFiles and then load root
+    const USD = window.USD; // usd_index.js attaches the module to window indirectly when initialized
+    if (!USD) return;
+    // Mount all non-root entries
+    if (entries && entries.length) {
+      const sorted = entries.slice().sort((a, b) => {
+        const aIsUsd = /\.(usd|usdc|usda|usdz)$/i.test(a.path);
+        const bIsUsd = /\.(usd|usdc|usda|usdz)$/i.test(b.path);
+        return aIsUsd === bIsUsd ? 0 : aIsUsd ? 1 : -1;
+      });
+      for (const { path, buffer } of sorted) {
+        const fileName = path.split("/").pop();
+        const dir = path.slice(0, path.length - (fileName?.length || 0)) || "/";
+        USD.FS_createPath("", dir, true, true);
+        USD.FS_createDataFile(
+          dir,
+          fileName,
+          new Uint8Array(buffer),
+          true,
+          false,
+          true
+        );
+      }
+      // determine root
+      let root = primaryPath;
+      if (!root) {
+        for (const { path } of sorted) {
+          if (/\.(usdz|usda|usdc|usd)$/i.test(path)) {
+            root = path;
+            break;
+          }
+        }
+      }
+      if (root && handle.loadFromURL) {
+        await handle.loadFromURL(root);
+      }
+    }
+  } catch (e) {
+    console.warn("[USD Iframe] loadFromEntries error", e);
+  }
+}
+
+window.addEventListener("message", async (evt) => {
+  const data = evt.data;
+  if (!data || typeof data !== "object") return;
+  try {
+    switch (data.type) {
+      case "USD_LOAD_URL":
+        post("USD_LOADING_START");
+        await handle?.loadFromURL?.(data.url);
+        post("USD_LOADED");
+        break;
+      case "USD_CLEAR":
+        await handle?.clear?.();
+        break;
+      case "USD_LOAD_ENTRIES":
+        post("USD_LOADING_START");
+        await loadFromEntries(data.entries || [], data.primaryPath);
+        post("USD_LOADED");
+        break;
+      default:
+        break;
+    }
+  } catch (e) {
+    console.warn("[USD Iframe] message error", e);
+  }
+});
+
+bootstrap();

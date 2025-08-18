@@ -12,6 +12,14 @@ import {
   EquirectangularReflectionMapping,
 } from "three";
 import { ThreeRenderDelegateInterface } from "./hydra/ThreeJsRenderDelegate.js";
+import {
+  shouldInclude,
+  isUsdFile,
+  getFileFromHandle,
+  parseFilePath,
+  safeCall,
+  getEntryFile,
+} from "./usdUtils.js";
 import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
@@ -19,31 +27,6 @@ import "./bindings/emHdBindings.js";
 
 const getUsdModule = globalThis["NEEDLE:USD:GET"];
 
-// USD file extensions and asset whitelist
-const USD_EXTENSIONS = ["usd", "usdc", "usda", "usdz"];
-const ASSET_EXTENSIONS = [
-  "png",
-  "jpg",
-  "jpeg",
-  "exr",
-  "hdr",
-  "tiff",
-  "tga",
-  "bmp",
-  "webp",
-  "obj",
-  "fbx",
-  "dae",
-  "stl",
-  "ply",
-  "gltf",
-  "glb",
-  "wav",
-  "mp3",
-  "ogg",
-  "json",
-  "xml",
-];
 const SKIP_DIRS = [
   ".git",
   "node_modules",
@@ -63,12 +46,6 @@ const SKIP_FILES = [
   ".env",
 ];
 const SYS_DIRS = ["/dev/", "/proc/", "/home/", "/tmp/", "/usd/"];
-
-// Helper to check if file should be included
-const shouldInclude = (name) => {
-  const ext = name.split(".").pop()?.toLowerCase();
-  return USD_EXTENSIONS.includes(ext) || ASSET_EXTENSIONS.includes(ext);
-};
 
 export function init(options = { container: null, hdrPath: null }) {
   return new Promise((resolveInit) => {
@@ -230,15 +207,7 @@ export function init(options = { container: null, hdrPath: null }) {
         }
       }
 
-      // Helper function for safe method calls
-      function safeCall(obj, method, ...args) {
-        try {
-          if (obj && typeof obj[method] === "function") {
-            return obj[method](...args);
-          }
-        } catch {}
-        return null;
-      }
+      // safeCall imported
 
       function clearStage() {
         if (!USD) {
@@ -508,23 +477,9 @@ export function init(options = { container: null, hdrPath: null }) {
         }
       }
 
-      // Helper to get file from entry or handle
-      async function getFileFromHandle(fileOrHandle) {
-        return fileOrHandle.getFile
-          ? await fileOrHandle.getFile()
-          : fileOrHandle;
-      }
+      // getFileFromHandle imported
 
-      // Helper to parse file path
-      function parseFilePath(fullPath, defaultName) {
-        if (!fullPath) return { fileName: defaultName, directory: "/" };
-        const fileName = fullPath.split("/").pop();
-        const directory = fullPath.substring(
-          0,
-          fullPath.length - fileName.length
-        );
-        return { fileName, directory };
-      }
+      // parseFilePath imported
 
       async function loadFile(
         fileOrHandle,
@@ -566,9 +521,7 @@ export function init(options = { container: null, hdrPath: null }) {
         }
       }
 
-      // Helper function to check if file has USD extension
-      const isUsdFile = (filename) =>
-        USD_EXTENSIONS.includes(filename.split(".").pop()?.toLowerCase());
+      // isUsdFile imported
 
       function testAndLoadFile(file) {
         if (isUsdFile(file.name)) {
@@ -649,15 +602,6 @@ export function init(options = { container: null, hdrPath: null }) {
         // clear current set of files
         clearStage();
 
-        // Sort files by path depth, then alphabetically
-        allFiles.sort((a, b) => {
-          const depthDiff =
-            a.fullPath.split("/").length - b.fullPath.split("/").length;
-          return depthDiff !== 0
-            ? depthDiff
-            : a.fullPath.localeCompare(b.fullPath);
-        });
-
         // Find root file candidates
         const usdFiles = allFiles.filter((file) => isUsdFile(file.name));
         const usdaFiles = usdFiles.filter((file) =>
@@ -667,35 +611,16 @@ export function init(options = { container: null, hdrPath: null }) {
         // Prefer .usda files, otherwise use first USD file
         let rootFile = usdaFiles[0] || usdFiles[0];
 
-        rootFile ||= allFiles[0]; // Fallback to first file if no USD files found
-
-        // remove the root file from the list of all files, we load it last
         if (rootFile) {
           allFiles.splice(allFiles.indexOf(rootFile), 1);
+        } else {
+          console.warn("No USD file found");
+          return;
         }
 
-        async function getFile(fileEntry) {
-          try {
-            return new Promise((resolve, reject) =>
-              fileEntry.file(resolve, reject)
-            );
-          } catch (err) {
-            console.warn("Error getting file:", err);
-            return null;
-          }
-        }
+        const getFile = getEntryFile;
 
-        // Sort so that USD files come last and all references are already there.
-        // As long as the root file is the last one this actually shouldn't matter
-        allFiles.sort((a, b) => {
-          const aIsUsd = isUsdFile(a.name);
-          const bIsUsd = isUsdFile(b.name);
-          if (aIsUsd && !bIsUsd) return 1;
-          if (!aIsUsd && bIsUsd) return -1;
-          return 0;
-        });
-
-        console.log("All files", allFiles);
+        // Mount all non-root files concurrently; order doesn't matter as we load the root last
 
         // Load all non-root files into memory
         const loadPromises = allFiles.map(async (file) => {
@@ -832,13 +757,9 @@ export function init(options = { container: null, hdrPath: null }) {
           try {
             if (!USD) await usdReady;
             clearStage();
-            // Mount all entries first
-            const sorted = (entries || []).slice().sort((a, b) => {
-              const aIsUsd = isUsdFile(a.path);
-              const bIsUsd = isUsdFile(b.path);
-              return aIsUsd === bIsUsd ? 0 : aIsUsd ? 1 : -1;
-            });
-            for (const { path, buffer } of sorted) {
+            // Mount all entries first (order doesn't matter since we load the root explicitly last)
+            const list = (entries || []).slice();
+            for (const { path, buffer } of list) {
               const fileName = path.split("/").pop();
               const dir =
                 path.slice(0, path.length - (fileName?.length || 0)) || "/";
@@ -855,7 +776,10 @@ export function init(options = { container: null, hdrPath: null }) {
             // Determine root
             let root = primaryPath;
             if (!root) {
-              root = sorted.find((e) => isUsdFile(e.path))?.path;
+              // Prefer .usda, else any USD
+              root =
+                list.find((e) => e.path.endsWith(".usda"))?.path ||
+                list.find((e) => isUsdFile(e.path))?.path;
             }
             if (root) {
               const fileNameOnly = root.split("/").pop();
@@ -911,12 +835,8 @@ export function init(options = { container: null, hdrPath: null }) {
               return;
             }
             // Detect a reasonable root (prefer .usda)
-            const sorted = entries.sort(
-              (a, b) => a[0].split("/").length - b[0].split("/").length
-            );
-            // Find root file, preferring .usda
-            const usdaRoot = sorted.find(([p]) => p.endsWith(".usda"));
-            const anyUsdRoot = sorted.find(([p]) => isUsdFile(p));
+            const usdaRoot = entries.find(([p]) => p.endsWith(".usda"));
+            const anyUsdRoot = entries.find(([p]) => isUsdFile(p));
             const root = usdaRoot || anyUsdRoot;
             if (root) {
               await loadFile(root[1], true, root[0]);

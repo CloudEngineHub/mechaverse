@@ -28,10 +28,14 @@ export class ThreeRenderDelegateInterface {
    * @param {*} instancerId
    * @returns
    */
-  createRPrim(typeId, id) {
-    if (DEBUG_PRIMS) console.log("Creating RPrim:", typeId, id);
+  createRPrim(typeId, id, instancerId) {
+    if (DEBUG_PRIMS) console.log("Creating RPrim:", typeId, id, instancerId);
     const mesh = new HydraMesh(id, this);
+    // Record instancing information so downstream can distinguish prototypes vs instances
+    mesh._isInstance = !!instancerId;
+    mesh._instancerId = instancerId;
     this.meshes[id] = mesh;
+    // Removed verbose RPrim creation logs
     return mesh;
   }
 
@@ -45,11 +49,30 @@ export class ThreeRenderDelegateInterface {
     if (t === "material") {
       const material = new HydraMaterial(id, this);
       this.materials[id] = material;
+      if (this?.config?.debugTransforms) {
+        try {
+          console.debug(`[USD] SPrim(material) created: id=${id}`);
+        } catch {}
+      }
       return material;
     }
     // Acknowledge camera and light sprims to prevent hydra warnings
-    if (t === "camera") return new HydraCamera(id, this);
-    if (t.includes("light")) return new HydraLight(id, this);
+    if (t === "camera") {
+      if (this?.config?.debugTransforms) {
+        try {
+          console.debug(`[USD] SPrim(camera) created: id=${id}`);
+        } catch {}
+      }
+      return new HydraCamera(id, this);
+    }
+    if (t.includes("light")) {
+      if (this?.config?.debugTransforms) {
+        try {
+          console.debug(`[USD] SPrim(light) created: id=${id}`);
+        } catch {}
+      }
+      return new HydraLight(id, this);
+    }
   }
 
   CommitResources() {

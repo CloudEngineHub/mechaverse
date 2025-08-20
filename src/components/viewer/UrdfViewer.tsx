@@ -10,6 +10,7 @@ import {
   setupMeshLoader,
   setupJointHighlighting,
   setupModelLoading,
+  setupJointLimits,
   URDFViewerElement,
 } from "@/components/viewer/urdfViewerHelpers";
 import * as THREE from "three";
@@ -119,10 +120,17 @@ const UrdfViewer: React.FC = () => {
         setupModelLoading(viewer, urdfPath);
       }
 
-      const onModelProcessed = () => {
+      const onModelProcessed = async () => {
         // Fit robot to view after it's loaded
         if (viewerRef.current) {
           fitRobotToView(viewerRef.current);
+          
+          // Setup joint limits enforcement
+          try {
+            await setupJointLimits(viewerRef.current, urdfPath);
+          } catch (error) {
+            console.warn("Failed to setup joint limits:", error);
+          }
         }
       };
 
@@ -203,10 +211,17 @@ const UrdfViewer: React.FC = () => {
         setupMeshLoader(viewerRef.current, urlModifierFunc);
 
         // Add a one-time event listener to confirm the URDF is processed
-        const onUrdfProcessed = () => {
+        const onUrdfProcessed = async () => {
           // Fit robot to view after it's loaded
           if (viewerRef.current) {
             fitRobotToView(viewerRef.current);
+            
+            // Setup joint limits enforcement
+            try {
+              await setupJointLimits(viewerRef.current, urdfPath);
+            } catch (error) {
+              console.warn("Failed to setup joint limits:", error);
+            }
           }
 
           viewerRef.current?.removeEventListener(
@@ -248,10 +263,17 @@ const UrdfViewer: React.FC = () => {
         setupMeshLoader(viewerRef.current, urlModifierFunc);
 
         // Add a one-time event listener to confirm the URDF is processed
-        const onUrdfProcessed = () => {
+        const onUrdfProcessed = async () => {
           // Fit robot to view after it's loaded
           if (viewerRef.current) {
             fitRobotToView(viewerRef.current);
+            
+            // Setup joint limits enforcement
+            try {
+              await setupJointLimits(viewerRef.current, loadPath);
+            } catch (error) {
+              console.warn("Failed to setup joint limits:", error);
+            }
           }
 
           viewerRef.current?.removeEventListener(

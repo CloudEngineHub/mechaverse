@@ -9,6 +9,19 @@ import {
 } from "three";
 import { loadMeshFile } from "./meshLoaders";
 
+// Interface for joint limits
+export interface JointLimit {
+  lower: number;
+  upper: number;
+  effort?: number;
+  velocity?: number;
+}
+
+// Map of joint names to their limits
+export interface JointLimits {
+  [jointName: string]: JointLimit;
+}
+
 // Define the interface for the URDF viewer element
 export interface URDFViewerElement extends HTMLElement {
   setJointValue: (joint: string, value: number) => void;
@@ -34,6 +47,10 @@ export interface URDFViewerElement extends HTMLElement {
   renderer?: {
     domElement: HTMLCanvasElement;
   };
+  
+  // Joint limits for enforcing constraints
+  jointLimits?: JointLimits;
+  originalSetJointValue?: (joint: string, value: number) => void;
 }
 
 /**
@@ -153,4 +170,111 @@ export function setupModelLoading(
 
   // Set the URDF path
   viewer.setAttribute("urdf", loadPath);
+}
+
+/**
+ * Parse joint limits from URDF XML content
+ */
+export function parseJointLimits(urdfContent: string): JointLimits {
+  const jointLimits: JointLimits = {};
+  
+  try {
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(urdfContent, "text/xml");
+    
+    // Find all joint elements
+    const joints = xmlDoc.querySelectorAll("joint");
+    
+    joints.forEach((joint) => {
+      const jointName = joint.getAttribute("name");
+      const limitElement = joint.querySelector("limit");
+      
+      if (jointName && limitElement) {
+        const lower = limitElement.getAttribute("lower");
+        const upper = limitElement.getAttribute("upper");
+        const effort = limitElement.getAttribute("effort");
+        const velocity = limitElement.getAttribute("velocity");
+        
+        if (lower !== null && upper !== null) {
+          jointLimits[jointName] = {
+            lower: parseFloat(lower),
+            upper: parseFloat(upper),
+            effort: effort ? parseFloat(effort) : undefined,
+            velocity: velocity ? parseFloat(velocity) : undefined,
+          };
+        }
+      }
+    });
+  } catch (error) {
+    console.warn("Failed to parse joint limits from URDF:", error);
+  }
+  
+  return jointLimits;
+}
+
+/**
+ * Clamp a joint value within its specified limits
+ */
+export function clampJointValue(
+  jointName: string,
+  value: number,
+  jointLimits: JointLimits
+): number {
+  const limits = jointLimits[jointName];
+  if (!limits) {
+    return value; // No limits defined, return original value
+  }
+  
+  return Math.max(limits.lower, Math.min(limits.upper, value));
+}
+
+/**
+ * Setup joint limit enforcement for the URDF viewer
+ */
+export function setupJointLimits(
+  viewer: URDFViewerElement,
+  urdfPath: string
+): Promise<void> {
+  return new Promise((resolve) => {
+    // Function to fetch and parse URDF content
+    const loadAndParseUrdf = async () => {
+      try {
+        const response = await fetch(urdfPath);
+        const urdfContent = await response.text();
+        
+        // Parse joint limits from URDF content
+        const jointLimits = parseJointLimits(urdfContent);
+        viewer.jointLimits = jointLimits;
+        
+        // Store the original setJointValue function
+        if (!viewer.originalSetJointValue) {
+          viewer.originalSetJointValue = viewer.setJointValue.bind(viewer);
+        }
+        
+        // Override setJointValue to enforce limits
+        viewer.setJointValue = (joint: string, value: number) => {
+          const clampedValue = clampJointValue(joint, value, jointLimits);
+          
+          // Only log if the value was clamped
+          if (Math.abs(clampedValue - value) > 1e-6) {
+            console.debug(
+              `Joint "${joint}" clamped from ${value.toFixed(3)} to ${clampedValue.toFixed(3)} (limits: ${jointLimits[joint]?.lower.toFixed(3)} to ${jointLimits[joint]?.upper.toFixed(3)})`
+            );
+          }
+          
+          if (viewer.originalSetJointValue) {
+            viewer.originalSetJointValue(joint, clampedValue);
+          }
+        };
+        
+        console.log(`Loaded joint limits for ${Object.keys(jointLimits).length} joints`);
+        resolve();
+      } catch (error) {
+        console.warn("Failed to load URDF for joint limits:", error);
+        resolve(); // Continue even if joint limits loading fails
+      }
+    };
+    
+    loadAndParseUrdf();
+  });
 }

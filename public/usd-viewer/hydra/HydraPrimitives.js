@@ -4,16 +4,12 @@ import {
   DoubleSide,
   Color,
   Mesh,
-  Group,
   Float32BufferAttribute,
   SRGBColorSpace,
   RGBAFormat,
   RepeatWrapping,
   LinearSRGBColorSpace,
   Vector2,
-  Vector3,
-  Quaternion,
-  Matrix4,
 } from "three";
 
 const DEBUG = {
@@ -61,67 +57,11 @@ export class HydraMesh {
       _name = _name.substring(lastSlash + 1);
     }
     this._mesh.name = _name;
-    // Keep original USD path for filtering/logging upstream
-    this._mesh.userData = this._mesh.userData || {};
-    this._mesh.userData.usdPath = id;
 
     // console.log("Creating HydraMesh: " + id + " -> " + _name);
 
-    // Build proper USD hierarchy instead of adding everything to root
-    this._addToHierarchy(hydraInterface.config.usdRoot, id);
-  }
-
-  /**
-   * Build proper USD hierarchy by creating Group objects for each path component
-   * Example: /arm_dual_urdf_6_pinch/left_forearm/visuals.proto_mesh_id0
-   * Creates: usdRoot → arm_dual_urdf_6_pinch → left_forearm → mesh
-   */
-  _addToHierarchy(rootGroup, usdPath) {
-    try {
-      // Parse USD path into components
-      const pathComponents = usdPath.split("/").filter((p) => p.length > 0);
-
-      // Skip the final component (usually the mesh name like visuals.proto_mesh_id0)
-      const hierarchyComponents = pathComponents.slice(0, -1);
-
-      let currentParent = rootGroup;
-      let currentPath = "";
-
-      // Build hierarchy step by step
-      for (const component of hierarchyComponents) {
-        currentPath += "/" + component;
-
-        // Look for existing group for this path component
-        let groupForComponent = currentParent.children.find(
-          (child) =>
-            child.userData?.usdPath === currentPath || child.name === component
-        );
-
-        // Create group if it doesn't exist
-        if (!groupForComponent) {
-          groupForComponent = new Group();
-          groupForComponent.name = component;
-          groupForComponent.userData = { usdPath: currentPath };
-          currentParent.add(groupForComponent);
-
-          // Removed verbose hierarchy creation logs
-        }
-
-        currentParent = groupForComponent;
-      }
-
-      // Add the mesh to its proper parent
-      currentParent.add(this._mesh);
-
-      // Removed verbose mesh addition logs
-    } catch (e) {
-      console.warn(
-        `[HIERARCHY] Failed to build hierarchy for '${usdPath}':`,
-        e
-      );
-      // Fallback: add to root
-      rootGroup.add(this._mesh);
-    }
+    hydraInterface.config.usdRoot.add(this._mesh); // FIXME
+   
   }
 
   updateOrder(attribute, attributeName, dimension = 3) {
@@ -158,53 +98,9 @@ export class HydraMesh {
    * @param {Iterable<number>} matrix - The 4x4 matrix to set on the mesh.
    */
   setTransform(matrix) {
-    // Debug: what transforms are we receiving?
-    if (
-      this._interface?.config?.debugTransforms &&
-      this._id.includes("arm") &&
-      !this._id.includes("base_link")
-    ) {
-      try {
-        const pos = new Vector3();
-        const tempMatrix = new Matrix4().set(...matrix).transpose();
-        tempMatrix.decompose(pos, new Quaternion(), new Vector3());
-        console.warn(
-          `[TRANSFORM] Received for ${this._id}: pos=${pos
-            .toArray()
-            .map((v) => v.toFixed(3))}`
-        );
-      } catch (e) {}
-    }
-
     this._mesh.matrix.set(...matrix);
     this._mesh.matrix.transpose();
     this._mesh.matrixAutoUpdate = false;
-    this._mesh.matrixWorldNeedsUpdate = true;
-
-    // Removed verbose positioning logs
-
-    // Hide likely prototype/library meshes that shouldn't render on their own
-    try {
-      const hidePrototypes = !!this._interface?.config?.hidePrototypeMeshes;
-      if (hidePrototypes) {
-        const idStr = String(this._id || "");
-
-        // Only hide meshes under /meshes/ that are at the origin
-        const isPrototypePath = idStr.startsWith("/meshes/");
-
-        if (isPrototypePath) {
-          // Hide only near-origin prototypes; allow rotated/scaled but translated instances
-          const m = this._mesh.matrix.elements;
-          const nearZero = (v, eps = 1e-6) => Math.abs(v) <= eps;
-          const nearOrigin =
-            nearZero(m[12]) && nearZero(m[13]) && nearZero(m[14]);
-          if (nearOrigin) {
-            // Hiding prototype mesh
-            this._mesh.visible = false;
-          }
-        }
-      }
-    } catch {}
   }
 
   /**
@@ -256,24 +152,6 @@ export class HydraMesh {
       }
     }
 
-    // Preserve existing transform and properties when swapping mesh instance
-    const oldMesh = this._mesh;
-    const newMesh = new Mesh(this._geometry, this._materials);
-    newMesh.name = oldMesh.name;
-    newMesh.castShadow = oldMesh.castShadow;
-    newMesh.receiveShadow = oldMesh.receiveShadow;
-    newMesh.visible = oldMesh.visible;
-    // carry forward any useful metadata (like usdPath)
-    newMesh.userData = { ...(oldMesh.userData || {}) };
-    newMesh.matrix.copy(oldMesh.matrix);
-    newMesh.matrixAutoUpdate = false;
-    newMesh.matrixWorldNeedsUpdate = true;
-
-    // Swap in scene graph
-    if (oldMesh.parent) oldMesh.parent.remove(oldMesh);
-    this._mesh = newMesh;
-    // Build proper USD hierarchy for material swapped meshes too
-    this._addToHierarchy(this._interface.config.usdRoot, this._id);
   }
 
   setDisplayColor(data, interpolation) {
@@ -358,135 +236,11 @@ export class HydraMesh {
 
   updatePoints(points) {
     this._points = points.slice(0);
-    this.updateOrder(this._points, "position");
-    // Remove verbose geometry logs
-  }
-
-  // Geometry sharing not needed - visual prims have their own geometry
-  _tryShareGeometryFromPrototype() {
-    try {
-      // Only share geometry if this mesh has no vertices
-      const hasVertices = this._geometry?.attributes?.position?.count > 0;
-      const idStr = String(this._id || "");
-
-      if (this._interface?.config?.debugTransforms && idStr.includes("arm")) {
-        console.warn(
-          `[USD ARM] _tryShareGeometryFromPrototype called for '${
-            this._id
-          }' - hasVertices: ${hasVertices} (count: ${
-            this._geometry?.attributes?.position?.count || 0
-          })`
-        );
-      }
-
-      if (hasVertices) return;
-
-      let prototypePath = null;
-
-      // Handle two path patterns:
-      // 1. /visuals/left_wrist/left_wrist_visual/mesh -> /meshes/left_wrist/mesh
-      // 2. /arm_dual_urdf_6_pinch/left_forearm/visuals.proto_mesh_id0 -> /meshes/left_forearm/mesh
-      if (idStr.startsWith("/visuals/")) {
-        const parts = idStr.split("/");
-        if (parts.length >= 4) {
-          const componentName = parts[2]; // e.g., "left_wrist"
-          prototypePath = `/meshes/${componentName}/mesh`;
-        }
-      } else if (idStr.includes("/visuals.proto_mesh_id")) {
-        // Extract component name from paths like /arm_dual_urdf_6_pinch/left_forearm/visuals.proto_mesh_id0
-        const match = idStr.match(/\/([^\/]+)\/visuals\.proto_mesh_id/);
-        if (match) {
-          const componentName = match[1]; // e.g., "left_forearm"
-          prototypePath = `/meshes/${componentName}/mesh`;
-        }
-      }
-
-      if (prototypePath) {
-        if (this._interface?.config?.debugTransforms && idStr.includes("arm")) {
-          console.warn(
-            `[USD ARM] Looking for prototype: '${this._id}' -> '${prototypePath}'`
-          );
-        }
-
-        const prototypeRPrim = this._interface.meshes[prototypePath];
-        if (prototypeRPrim) {
-          if (
-            this._interface?.config?.debugTransforms &&
-            idStr.includes("arm")
-          ) {
-            const vertexCount =
-              prototypeRPrim._geometry?.attributes?.position?.count || 0;
-            console.warn(
-              `[USD ARM] Found prototype with ${vertexCount} vertices`
-            );
-          }
-
-          if (
-            prototypeRPrim._geometry &&
-            prototypeRPrim._geometry.attributes.position?.count > 0
-          ) {
-            if (this._interface?.config?.debugTransforms) {
-              console.warn(
-                `[USD ARM] SHARING GEOMETRY: '${this._id}' <- '${prototypePath}' (${prototypeRPrim._geometry.attributes.position.count} vertices)`
-              );
-            }
-            // Share the geometry but keep our own transform and materials
-            this._geometry = prototypeRPrim._geometry;
-            this._mesh.geometry = this._geometry;
-            // Make sure the mesh is visible since it now has geometry
-            this._mesh.visible = true;
-            // Copy materials if the prototype has them and we don't have good ones
-            if (
-              prototypeRPrim._mesh.material &&
-              this._mesh.material.name?.includes("Default")
-            ) {
-              this._mesh.material = prototypeRPrim._mesh.material;
-            }
-          } else {
-            if (
-              this._interface?.config?.debugTransforms &&
-              idStr.includes("arm")
-            ) {
-              console.warn(
-                `[USD ARM] Prototype '${prototypePath}' has no geometry`
-              );
-            }
-          }
-        } else {
-          if (
-            this._interface?.config?.debugTransforms &&
-            idStr.includes("arm")
-          ) {
-            console.warn(
-              `[USD ARM] No prototype found for '${this._id}' at '${prototypePath}'`
-            );
-            // Show what prototypes are available
-            const availablePrototypes = Object.keys(
-              this._interface.meshes
-            ).filter((id) => id.startsWith("/meshes/"));
-            console.warn(
-              `[USD ARM] Available prototypes:`,
-              availablePrototypes.slice(0, 5)
-            );
-          }
-        }
-      } else {
-        if (this._interface?.config?.debugTransforms && idStr.includes("arm")) {
-          console.warn(
-            `[USD ARM] Could not determine prototype path for '${this._id}'`
-          );
-        }
-      }
-    } catch (e) {
-      if (this._interface?.config?.debugTransforms) {
-        console.warn(`[USD] Failed to share geometry for '${this._id}':`, e);
-      }
-    }
+    this.updateOrder(this._points, "position")
   }
 
   commit() {
     // All Three.js resources are already updated during the sync phase.
-    // Removed verbose hierarchy debugging
   }
 }
 

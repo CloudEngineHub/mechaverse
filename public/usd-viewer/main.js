@@ -265,11 +265,7 @@ export function init(options = { container: null, hdrPath: null }) {
 
         const renderInterface = (window.renderInterface =
           new ThreeRenderDelegateInterface({
-            ...delegateConfig,
-            // Enable to investigate transform/origin issues
-            debugTransforms: true,
-            // Re-enable smart prototype hiding
-            hidePrototypeMeshes: true,
+            delegateConfig,
           }));
         driver = new USD.HdWebSyncDriver(renderInterface, path);
         if (driver instanceof Promise) {
@@ -290,47 +286,10 @@ export function init(options = { container: null, hdrPath: null }) {
         }
 
         // if up axis is z, rotate, otherwise make sure rotation is 0, in case we rotated in the past and need to undo it
-        const upAxis = String.fromCharCode(stage.GetUpAxis());
-        window.usdRoot.rotation.x = upAxis === "z" ? -Math.PI / 2 : 0;
-        if (renderInterface?.config?.debugTransforms) {
-          try {
-            console.info(`[USD] Stage up-axis: ${upAxis}`);
-            const bbox = new Box3().setFromObject(window.usdRoot);
-            console.info(
-              `[USD] Scene bounds min=${bbox.min
-                .toArray()
-                .map((v) => v.toFixed(3))} max=${bbox.max
-                .toArray()
-                .map((v) => v.toFixed(3))}`
-            );
-          } catch {}
-        }
+        window.usdRoot.rotation.x =
+          String.fromCharCode(stage.GetUpAxis()) === "z" ? -Math.PI / 2 : 0;
 
-        // Fit camera using only meshes that aren't hidden (avoid prototype-only scenes evaluating to empty visible set)
-        const selection = [];
-        window.usdRoot.traverse((obj) => {
-          if (obj.isMesh && obj.visible !== false) selection.push(obj);
-        });
-        fitCameraToSelection(
-          window.camera,
-          window._controls,
-          selection.length ? selection : [window.usdRoot]
-        );
-        if (renderInterface?.config?.debugTransforms) {
-          try {
-            const bbox = new Box3().setFromObject(window.usdRoot);
-            const center = bbox.getCenter(new Vector3());
-            console.info(
-              `[USD] After fit: camera pos=${window.camera.position
-                .toArray()
-                .map((v) => v.toFixed(3))} target=${window._controls.target
-                .toArray()
-                .map((v) => v.toFixed(3))} center=${center
-                .toArray()
-                .map((v) => v.toFixed(3))}`
-            );
-          } catch {}
-        }
+        fitCameraToSelection(window.camera, window._controls, [window.usdRoot]);
         ready = true;
 
         const root = {};

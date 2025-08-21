@@ -71,3 +71,16 @@ export interface Robot {
   sdk_languages: string[] | null;
   tags: string[] | null;
 }
+
+// Interface for joint limits
+export interface JointLimit {
+  lower: number;
+  upper: number;
+  effort?: number;
+  velocity?: number;
+}
+
+// Map of joint names to their limits
+export interface JointLimits {
+  [jointName: string]: JointLimit;
+}

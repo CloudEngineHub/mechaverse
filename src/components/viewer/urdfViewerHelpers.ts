@@ -8,19 +8,7 @@ import {
   Scene,
 } from "three";
 import { loadMeshFile } from "./meshLoaders";
-
-// Interface for joint limits
-export interface JointLimit {
-  lower: number;
-  upper: number;
-  effort?: number;
-  velocity?: number;
-}
-
-// Map of joint names to their limits
-export interface JointLimits {
-  [jointName: string]: JointLimit;
-}
+import { JointLimits } from "../../types/robot";
 
 // Define the interface for the URDF viewer element
 export interface URDFViewerElement extends HTMLElement {

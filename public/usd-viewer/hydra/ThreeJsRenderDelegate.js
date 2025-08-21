@@ -28,7 +28,7 @@ export class ThreeRenderDelegateInterface {
    * @param {*} instancerId
    * @returns
    */
-  createRPrim(typeId, id) {
+  createRPrim(typeId, id, instancerId) {
     if (DEBUG_PRIMS) console.log("Creating RPrim:", typeId, id);
     const mesh = new HydraMesh(id, this);
     this.meshes[id] = mesh;
@@ -48,8 +48,12 @@ export class ThreeRenderDelegateInterface {
       return material;
     }
     // Acknowledge camera and light sprims to prevent hydra warnings
-    if (t === "camera") return new HydraCamera(id, this);
-    if (t.includes("light")) return new HydraLight(id, this);
+    if (t === "camera") {
+      return new HydraCamera(id, this);
+    }
+    if (t.includes("light")) {
+      return new HydraLight(id, this);
+    }
   }
 
   CommitResources() {

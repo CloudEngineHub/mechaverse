@@ -61,6 +61,7 @@ export class HydraMesh {
     // console.log("Creating HydraMesh: " + id + " -> " + _name);
 
     hydraInterface.config.usdRoot.add(this._mesh); // FIXME
+   
   }
 
   updateOrder(attribute, attributeName, dimension = 3) {
@@ -151,8 +152,6 @@ export class HydraMesh {
       }
     }
 
-    this._mesh = new Mesh(this._geometry, this._materials);
-    this._interface.config.usdRoot.add(this._mesh);
   }
 
   setDisplayColor(data, interpolation) {
@@ -237,7 +236,7 @@ export class HydraMesh {
 
   updatePoints(points) {
     this._points = points.slice(0);
-    this.updateOrder(this._points, "position");
+    this.updateOrder(this._points, "position")
   }
 
   commit() {

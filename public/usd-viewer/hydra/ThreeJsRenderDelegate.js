@@ -28,7 +28,7 @@ export class ThreeRenderDelegateInterface {
    * @param {*} instancerId
    * @returns
    */
-  createRPrim(typeId, id, instancerId) {
+  createRPrim(typeId, id) {
     if (DEBUG_PRIMS) console.log("Creating RPrim:", typeId, id);
     const mesh = new HydraMesh(id, this);
     this.meshes[id] = mesh;

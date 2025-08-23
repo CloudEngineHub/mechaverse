@@ -264,9 +264,7 @@ export function init(options = { container: null, hdrPath: null }) {
         };
 
         const renderInterface = (window.renderInterface =
-          new ThreeRenderDelegateInterface({
-            delegateConfig,
-          }));
+          new ThreeRenderDelegateInterface(delegateConfig));
         driver = new USD.HdWebSyncDriver(renderInterface, path);
         if (driver instanceof Promise) {
           driver = await driver;

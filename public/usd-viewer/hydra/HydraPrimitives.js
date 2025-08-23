@@ -151,7 +151,8 @@ export class HydraMesh {
         this._geometry.addGroup(section.start, section.length, i + 1);
       }
     }
-
+    this._mesh = new Mesh(this._geometry, this._materials);
+    this._interface.config.usdRoot.add(this._mesh);
   }
 
   setDisplayColor(data, interpolation) {
